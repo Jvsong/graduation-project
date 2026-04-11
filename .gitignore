@@ -1,0 +1,6 @@
+ecommerce-autotest/.git.backup-for-outer-repo/
+__pycache__/
+*.pyc
+logs/
+reports/
+chromedriver/**/sm.lock

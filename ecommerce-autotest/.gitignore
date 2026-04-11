@@ -1,0 +1,12 @@
+logs/
+reports/
+downloads/
+__pycache__/
+.pytest_cache/
+*.pyc
+venv/
+.venv/
+.env
+*.log
+*.tmp
+*.cache

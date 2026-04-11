@@ -1,0 +1,148 @@
+valid_users:
+  - username: "admin"
+    password: "admin123"
+    role: "管理员"
+    description: "shop-system 默认管理员账号"
+  - username: "user1"
+    password: "admin123"
+    role: "运营"
+    description: "shop-system 测试数据普通账号"
+
+invalid_users:
+  - username: ""
+    password: "admin123"
+    expected_error: "请输入用户名"
+    description: "用户名为空"
+  - username: "admin"
+    password: ""
+    expected_error: "请输入密码"
+    description: "密码为空"
+  - username: "wronguser"
+    password: "admin123"
+    expected_error: "401"
+    description: "用户名错误"
+  - username: "admin"
+    password: "wrongpassword"
+    expected_error: "401"
+    description: "密码错误"
+  - username: "admin@123"
+    password: "admin123"
+    expected_error: "401"
+    description: "系统不接受不存在用户名"
+  - username: "admin"
+    password: "123"
+    expected_error: "密码长度在"
+    description: "密码过短"
+
+boundary_cases:
+  - username: "aaaaaaaaaaaaaaaaaaaaa"
+    password: "admin123"
+    expected_error: "用户名长度在"
+    description: "超长用户名"
+  - username: "admin"
+    password: "ppppppppppppppppppppp"
+    expected_error: "密码长度在"
+    description: "超长密码"
+  - username: "admin' OR '1'='1"
+    password: "admin123"
+    expected_error: "401"
+    description: "SQL 注入防护测试"
+  - username: "<script>alert('xss')</script>"
+    password: "admin123"
+    expected_error: "401"
+    description: "XSS 防护测试"
+
+login_status:
+  - username: "admin"
+    password: "admin123"
+    remember_me: true
+    description: "记住我状态"
+  - username: "user1"
+    password: "admin123"
+    remember_me: false
+    description: "不记住登录状态"
+
+concurrent_login:
+  - username: "admin"
+    password: "admin123"
+    concurrent_sessions: 2
+    description: "同一账号多次登录"
+
+performance_test:
+  - username: "admin"
+    password: "admin123"
+    expected_login_time: 3.0
+  - username: "user1"
+    password: "admin123"
+    expected_login_time: 2.0
+
+multi_browser:
+  browsers: ["chrome", "firefox", "edge"]
+  test_users:
+    - username: "admin"
+      password: "admin123"
+    - username: "user1"
+      password: "admin123"
+
+test_case_groups:
+  smoke_test:
+    - "valid_users[0]"
+    - "invalid_users[0]"
+  regression_test:
+    - "valid_users"
+    - "invalid_users"
+    - "boundary_cases"
+  security_test:
+    - "boundary_cases[2]"
+    - "boundary_cases[3]"
+  performance_test:
+    - "performance_test"
+
+environment_specific:
+  test:
+    base_url: "http://localhost:3000"
+    timeout: 30
+  staging:
+    base_url: "http://staging.example.com"
+    timeout: 30
+  prod:
+    base_url: "http://prod.example.com"
+    timeout: 60
+
+page_elements:
+  username_input:
+    by: "id"
+    value: "username"
+    description: "用户名输入框"
+  password_input:
+    by: "id"
+    value: "password"
+    description: "密码输入框"
+  login_button:
+    by: "id"
+    value: "login-btn"
+    description: "登录按钮"
+  error_message:
+    by: "id"
+    value: "error-msg"
+    description: "错误提示信息"
+  remember_me_checkbox:
+    by: "id"
+    value: "remember-me"
+    description: "记住我复选框"
+  forgot_password_link:
+    by: "id"
+    value: "forgot-password"
+    description: "忘记密码链接"
+
+assertions:
+  login_success:
+    url_contains: "dashboard"
+    title_contains: "电商后台管理系统"
+    element_present: "app"
+  login_failure:
+    element_present: "error-msg"
+    element_text_contains: "401"
+  remember_me:
+    local_storage_key: "rememberMe"
+    expected_value: "true"

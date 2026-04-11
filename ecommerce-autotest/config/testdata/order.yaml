@@ -1,0 +1,467 @@
+# 订单管理模块测试数据
+
+# 订单状态定义
+order_status:
+  pending_payment: "待付款"
+  paid: "已付款"
+  pending_shipment: "待发货"
+  shipped: "已发货"
+  delivered: "已送达"
+  completed: "已完成"
+  cancelled: "已取消"
+  refunded: "已退款"
+
+# 测试订单数据
+test_orders:
+  # 待付款订单
+  - order_id: "ORDER-20240404-001"
+    user_id: 1001
+    username: "customer1"
+    order_time: "2024-04-04 10:30:00"
+    total_amount: 2999.99
+    status: "pending_payment"
+    payment_method: "alipay"
+    items:
+      - product_id: 1001
+        product_name: "智能手机"
+        quantity: 1
+        price: 2999.99
+        subtotal: 2999.99
+
+  # 待发货订单
+  - order_id: "ORDER-20240404-002"
+    user_id: 1002
+    username: "customer2"
+    order_time: "2024-04-04 11:15:00"
+    total_amount: 89.99
+    status: "pending_shipment"
+    payment_method: "wechat_pay"
+    payment_time: "2024-04-04 11:20:00"
+    items:
+      - product_id: 2001
+        product_name: "男士T恤"
+        quantity: 1
+        price: 89.99
+        subtotal: 89.99
+
+  # 已发货订单
+  - order_id: "ORDER-20240403-001"
+    user_id: 1003
+    username: "customer3"
+    order_time: "2024-04-03 14:20:00"
+    total_amount: 5999.99
+    status: "shipped"
+    payment_method: "bank_transfer"
+    payment_time: "2024-04-03 14:25:00"
+    shipment_time: "2024-04-03 16:30:00"
+    tracking_number: "SF1234567890"
+    courier: "顺丰速运"
+    items:
+      - product_id: 1002
+        product_name: "笔记本电脑"
+        quantity: 1
+        price: 5999.99
+        subtotal: 5999.99
+
+  # 已完成订单
+  - order_id: "ORDER-20240401-001"
+    user_id: 1001
+    username: "customer1"
+    order_time: "2024-04-01 09:45:00"
+    total_amount: 3089.98
+    status: "completed"
+    payment_method: "alipay"
+    payment_time: "2024-04-01 09:50:00"
+    shipment_time: "2024-04-01 14:30:00"
+    delivery_time: "2024-04-02 10:15:00"
+    completion_time: "2024-04-03 08:00:00"
+    items:
+      - product_id: 1001
+        product_name: "智能手机"
+        quantity: 1
+        price: 2999.99
+        subtotal: 2999.99
+      - product_id: 2001
+        product_name: "男士T恤"
+        quantity: 1
+        price: 89.99
+        subtotal: 89.99
+
+# 订单搜索测试数据
+search_test_cases:
+  # 订单号搜索
+  - search_type: "order_id"
+    search_value: "ORDER-20240404-001"
+    expected_results: 1
+    description: "按完整订单号搜索"
+
+  - search_type: "order_id"
+    search_value: "20240404"
+    expected_results: 2
+    description: "按订单号部分匹配搜索"
+
+  # 用户名搜索
+  - search_type: "username"
+    search_value: "customer1"
+    expected_results: 2
+    description: "按用户名搜索"
+
+  # 商品名称搜索
+  - search_type: "product_name"
+    search_value: "智能手机"
+    expected_results: 2
+    description: "按商品名称搜索"
+
+# 订单筛选测试数据
+filter_test_cases:
+  # 状态筛选
+  - filter_type: "status"
+    filter_value: "pending_payment"
+    expected_results: 1
+    description: "筛选待付款订单"
+
+  - filter_type: "status"
+    filter_value: "pending_shipment"
+    expected_results: 1
+    description: "筛选待发货订单"
+
+  - filter_type: "status"
+    filter_value: "shipped"
+    expected_results: 1
+    description: "筛选已发货订单"
+
+  - filter_type: "status"
+    filter_value: "completed"
+    expected_results: 1
+    description: "筛选已完成订单"
+
+  # 时间范围筛选
+  - filter_type: "time_range"
+    start_date: "2024-04-04"
+    end_date: "2024-04-04"
+    expected_results: 2
+    description: "筛选今天订单"
+
+  - filter_type: "time_range"
+    start_date: "2024-04-01"
+    end_date: "2024-04-03"
+    expected_results: 2
+    description: "筛选过去三天订单"
+
+  # 金额范围筛选
+  - filter_type: "amount_range"
+    min_amount: 0
+    max_amount: 100
+    expected_results: 1
+    description: "筛选100元以下订单"
+
+  - filter_type: "amount_range"
+    min_amount: 2000
+    max_amount: 4000
+    expected_results: 2
+    description: "筛选2000-4000元订单"
+
+# 订单排序测试数据
+sort_test_cases:
+  - sort_by: "order_time_desc"
+    expected_first_order: "ORDER-20240404-002"
+    description: "按订单时间从新到旧排序"
+
+  - sort_by: "order_time_asc"
+    expected_first_order: "ORDER-20240401-001"
+    description: "按订单时间从旧到新排序"
+
+  - sort_by: "amount_desc"
+    expected_first_order: "ORDER-20240403-001"
+    description: "按订单金额从高到低排序"
+
+  - sort_by: "amount_asc"
+    expected_first_order: "ORDER-20240404-002"
+    description: "按订单金额从低到高排序"
+
+# 订单操作测试数据
+operation_test_cases:
+  # 发货操作
+  shipment_operation:
+    order_id: "ORDER-20240404-002"
+    courier: "顺丰速运"
+    tracking_number: "SF1234567891"
+    shipment_note: "请妥善包装"
+    expected_status: "shipped"
+
+  # 取消订单
+  cancel_operation:
+    order_id: "ORDER-20240404-001"
+    cancel_reason: "客户要求取消"
+    expected_status: "cancelled"
+
+  # 退款操作
+  refund_operation:
+    order_id: "ORDER-20240404-001"
+    refund_amount: 2999.99
+    refund_reason: "商品缺货"
+    expected_status: "refunded"
+
+  # 订单备注
+  add_note:
+    order_id: "ORDER-20240403-001"
+    note_content: "客户要求周末配送"
+    note_type: "customer_request"
+
+  # 批量操作
+  batch_operations:
+    select_all: false
+    selected_orders: ["ORDER-20240404-001", "ORDER-20240404-002"]
+    operation: "export"
+    format: "excel"
+
+# 订单状态流转测试
+status_flow_test:
+  # 正常流程：待付款 -> 已付款 -> 待发货 -> 已发货 -> 已送达 -> 已完成
+  normal_flow:
+    - initial_status: "pending_payment"
+      action: "payment"
+      next_status: "paid"
+      action_data:
+        payment_method: "alipay"
+        payment_time: "2024-04-04 12:00:00"
+
+    - initial_status: "paid"
+      action: "shipment"
+      next_status: "pending_shipment"
+      action_data:
+        prepare_time: 2  # 准备时间（小时）
+
+    - initial_status: "pending_shipment"
+      action: "confirm_shipment"
+      next_status: "shipped"
+      action_data:
+        courier: "顺丰速运"
+        tracking_number: "SF1234567892"
+
+    - initial_status: "shipped"
+      action: "confirm_delivery"
+      next_status: "delivered"
+      action_data:
+        delivery_time: "2024-04-05 10:30:00"
+
+    - initial_status: "delivered"
+      action: "confirm_completion"
+      next_status: "completed"
+      action_data:
+        completion_time: "2024-04-06 08:00:00"
+
+  # 取消流程：待付款 -> 已取消
+  cancel_flow:
+    - initial_status: "pending_payment"
+      action: "cancel"
+      next_status: "cancelled"
+      action_data:
+        cancel_reason: "客户取消"
+
+  # 退款流程：已付款 -> 已退款
+  refund_flow:
+    - initial_status: "paid"
+      action: "refund"
+      next_status: "refunded"
+      action_data:
+        refund_reason: "商品质量问题"
+        refund_amount: 2999.99
+
+# 订单详情测试数据
+order_detail_test:
+  order_id: "ORDER-20240404-001"
+  expected_sections:
+    - "订单基本信息"
+    - "商品列表"
+    - "价格明细"
+    - "物流信息"
+    - "操作记录"
+
+  expected_details:
+    order_id: "ORDER-20240404-001"
+    username: "customer1"
+    total_amount: 2999.99
+    status: "待付款"
+    order_time: "2024-04-04 10:30:00"
+
+# 订单统计测试数据
+statistics_test:
+  # 今日统计
+  today_stats:
+    date: "2024-04-04"
+    expected_counts:
+      total_orders: 2
+      pending_payment: 1
+      pending_shipment: 1
+      total_amount: 3089.98
+
+  # 本月统计
+  monthly_stats:
+    month: "2024-04"
+    expected_counts:
+      total_orders: 4
+      completed_orders: 1
+      total_amount: 12089.96
+      avg_order_amount: 3022.49
+
+# 订单导出测试数据
+export_test:
+  formats:
+    - format: "excel"
+      file_extension: ".xlsx"
+      expected_columns: ["订单号", "用户名", "订单时间", "总金额", "状态"]
+
+    - format: "csv"
+      file_extension: ".csv"
+      expected_columns: ["order_id", "username", "order_time", "total_amount", "status"]
+
+    - format: "pdf"
+      file_extension: ".pdf"
+      expected_sections: ["订单列表", "统计信息"]
+
+  # 导出筛选条件
+  export_filters:
+    - date_range: ["2024-04-01", "2024-04-04"]
+      status: ["completed", "shipped"]
+      expected_count: 2
+
+# 订单验证规则
+validation_rules:
+  shipment:
+    tracking_number:
+      required: true
+      pattern: "^[A-Z0-9]{8,20}$"
+    courier:
+      required: true
+      max_length: 50
+
+  refund:
+    refund_amount:
+      required: true
+      min_value: 0.01
+      max_value: 999999.99
+    refund_reason:
+      required: true
+      min_length: 5
+      max_length: 500
+
+# 边界测试数据
+boundary_test_cases:
+  # 超长备注
+  - note_content: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+a"
+    expected_valid: false
+    expected_error: "备注内容不能超过1000个字符"
+    description: "超长备注"
+
+  # 无效快递单号
+  - tracking_number: "123"
+    expected_valid: false
+    expected_error: "快递单号格式不正确"
+    description: "过短快递单号"
+
+  # 退款金额超过订单金额
+  - refund_amount: 3000.00
+    order_amount: 2999.99
+    expected_valid: false
+    expected_error: "退款金额不能超过订单金额"
+    description: "退款金额超限"
+
+# 性能测试数据
+performance_test:
+  bulk_operations:
+    order_count: 1000
+    export_expected_time: 30  # 秒
+
+  search_performance:
+    keyword: "ORDER"
+    expected_response_time: 2  # 秒
+
+  statistics_calculation:
+    date_range: 30  # 天
+    expected_calculation_time: 5  # 秒
+
+# 测试用例分组
+test_case_groups:
+  smoke_test:
+    - "search_test_cases[0]"  # 基本搜索
+    - "filter_test_cases[0]"  # 基本筛选
+    - "operation_test_cases.shipment_operation"  # 发货操作
+
+  regression_test:
+    - "search_test_cases"
+    - "filter_test_cases"
+    - "sort_test_cases"
+    - "operation_test_cases"
+    - "status_flow_test"
+
+  business_flow_test:
+    - "status_flow_test.normal_flow"
+    - "status_flow_test.cancel_flow"
+    - "status_flow_test.refund_flow"
+
+  security_test:
+    - "boundary_test_cases"
+    - "validation_rules"
+
+  performance_test:
+    - "performance_test"
+
+# 页面元素定位器
+page_elements:
+  # 订单列表页面
+  order_list:
+    search_input: { by: "id", value: "order-search-input" }
+    search_button: { by: "id", value: "search-btn" }
+    status_filter: { by: "id", value: "status-filter" }
+    date_filter: { by: "id", value: "date-filter" }
+    order_table: { by: "id", value: "order-table" }
+    export_button: { by: "id", value: "export-btn" }
+
+  # 订单详情页面
+  order_detail:
+    order_id_display: { by: "id", value: "order-id" }
+    status_display: { by: "id", value: "order-status" }
+    amount_display: { by: "id", value: "order-amount" }
+    shipment_button: { by: "id", value: "shipment-btn" }
+    cancel_button: { by: "id", value: "cancel-btn" }
+    refund_button: { by: "id", value: "refund-btn" }
+
+  # 发货表单
+  shipment_form:
+    courier_select: { by: "id", value: "courier" }
+    tracking_input: { by: "id", value: "tracking-number" }
+    note_textarea: { by: "id", value: "shipment-note" }
+    confirm_button: { by: "id", value: "confirm-shipment" }
+    cancel_button: { by: "id", value: "cancel-shipment" }
+
+# 断言数据
+assertions:
+  order_list_loaded:
+    element_present: "order-table"
+    row_count_min: 1
+
+  order_detail_loaded:
+    element_present: "order-id"
+    element_present: "order-status"
+    element_present: "order-amount"
+
+  shipment_success:
+    status_changed: "shipped"
+    element_present: "success-message"
+    element_text_contains: "发货成功"
+
+  export_success:
+    file_downloaded: true
+    file_extension: ".xlsx"
+    file_size_min: 1024  # 至少1KB

@@ -1,0 +1,67 @@
+# config/config.yaml.example
+project:
+  name: "电商后台自动化测试系统"
+  version: "1.0.0"
+
+environment:
+  base_url: "http://localhost:3000"
+  api_base_url: "http://localhost:8083/api"
+  test_env: "shop-system"  # test/staging/prod/shop-system
+
+browser:
+  name: "edge"  # chrome/firefox/edge
+  headless: false
+  window_size: "1920x1080"
+  implicit_wait: 10
+  page_load_timeout: 30
+  download_path: "./downloads"
+
+test:
+  retry_count: 2
+  timeout: 30
+  screenshot_on_failure: true
+  screenshot_path: "./reports/screenshots"
+
+report:
+  output_dir: "./reports"
+  template: "default.html"
+  send_email: false
+  auto_archive: true
+  retention_days: 30  # 报告保留天数
+  email_config:
+    smtp_server: "smtp.example.com"
+    smtp_port: 587
+    use_tls: true
+    use_ssl: false
+    username: ""  # SMTP用户名
+    password: ""  # SMTP密码
+    sender: "test@example.com"
+    sender_name: "自动化测试系统"
+    receivers: ["admin@example.com"]
+    cc: []  # 抄送列表
+    bcc: []  # 密送列表
+    subject_template: "测试报告 - {project_name} - {timestamp}"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/test.log"
+  max_size: 10485760  # 10MB
+  backup_count: 5
+
+test_data:
+  login:
+    valid_users:
+      - username: "admin"
+        password: "admin123"
+        role: "管理员"
+      - username: "user1"
+        password: "admin123"
+        role: "用户"
+    invalid_users:
+      - username: "adminadmin"
+        password: "password123"
+        expected_error: "用户名不存在"
+      - username: "admin"
+        password: "11241423"
+        expected_error: "密码错误"

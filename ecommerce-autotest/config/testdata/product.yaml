@@ -1,0 +1,402 @@
+# 商品管理模块测试数据
+
+# 商品分类数据
+categories:
+  - id: 1
+    name: "电子产品"
+    description: "手机、电脑、平板等"
+    parent_id: null
+    sort_order: 1
+
+  - id: 2
+    name: "服装"
+    description: "男装、女装、童装"
+    parent_id: null
+    sort_order: 2
+
+  - id: 3
+    name: "食品"
+    description: "零食、饮料、生鲜"
+    parent_id: null
+    sort_order: 3
+
+  - id: 4
+    name: "家居"
+    description: "家具、家纺、厨具"
+    parent_id: null
+    sort_order: 4
+
+  - id: 5
+    name: "图书"
+    description: "教材、小说、专业书籍"
+    parent_id: null
+    sort_order: 5
+
+# 测试商品数据
+test_products:
+  # 电子产品
+  - id: 1001
+    name: "智能手机"
+    category_id: 1
+    category_name: "电子产品"
+    sku: "PHONE-001"
+    price: 2999.99
+    original_price: 3299.99
+    stock: 150
+    description: "高性能智能手机，6.5英寸屏幕，128GB存储"
+    status: "上架"
+    is_hot: true
+    is_new: true
+    tags: ["热门", "新品", "智能手机"]
+
+  - id: 1002
+    name: "笔记本电脑"
+    category_id: 1
+    category_name: "电子产品"
+    sku: "LAPTOP-001"
+    price: 5999.99
+    original_price: 6499.99
+    stock: 80
+    description: "轻薄笔记本电脑，i7处理器，16GB内存"
+    status: "上架"
+    is_hot: true
+    is_new: false
+    tags: ["热门", "笔记本电脑"]
+
+  # 服装
+  - id: 2001
+    name: "男士T恤"
+    category_id: 2
+    category_name: "服装"
+    sku: "CLOTH-001"
+    price: 89.99
+    original_price: 99.99
+    stock: 500
+    description: "纯棉男士T恤，多种颜色可选"
+    status: "上架"
+    is_hot: false
+    is_new: true
+    tags: ["新品", "T恤"]
+
+  - id: 2002
+    name: "女士连衣裙"
+    category_id: 2
+    category_name: "服装"
+    sku: "CLOTH-002"
+    price: 199.99
+    original_price: 249.99
+    stock: 300
+    description: "夏季女士连衣裙，清爽舒适"
+    status: "上架"
+    is_hot: true
+    is_new: false
+    tags: ["热门", "连衣裙"]
+
+# 商品搜索测试数据
+search_test_cases:
+  # 关键词搜索
+  - search_keyword: "手机"
+    expected_results: ["智能手机"]
+    min_results: 1
+
+  - search_keyword: "电脑"
+    expected_results: ["笔记本电脑"]
+    min_results: 1
+
+  - search_keyword: "T恤"
+    expected_results: ["男士T恤"]
+    min_results: 1
+
+  # 模糊搜索
+  - search_keyword: "智能"
+    expected_results: ["智能手机"]
+    min_results: 1
+
+  - search_keyword: "笔记本"
+    expected_results: ["笔记本电脑"]
+    min_results: 1
+
+  # 无结果搜索
+  - search_keyword: "不存在商品"
+    expected_results: []
+    min_results: 0
+
+# 商品筛选测试数据
+filter_test_cases:
+  # 价格范围筛选
+  - filter_type: "price_range"
+    min_price: 0
+    max_price: 100
+    expected_products: ["男士T恤"]
+
+  - filter_type: "price_range"
+    min_price: 2000
+    max_price: 4000
+    expected_products: ["智能手机"]
+
+  # 分类筛选
+  - filter_type: "category"
+    category_id: 1
+    expected_products: ["智能手机", "笔记本电脑"]
+
+  - filter_type: "category"
+    category_id: 2
+    expected_products: ["男士T恤", "女士连衣裙"]
+
+  # 状态筛选
+  - filter_type: "status"
+    status: "上架"
+    expected_products: ["智能手机", "笔记本电脑", "男士T恤", "女士连衣裙"]
+
+  - filter_type: "status"
+    status: "下架"
+    expected_products: []
+
+  # 热门商品筛选
+  - filter_type: "is_hot"
+    value: true
+    expected_products: ["智能手机", "笔记本电脑", "女士连衣裙"]
+
+  # 新品筛选
+  - filter_type: "is_new"
+    value: true
+    expected_products: ["智能手机", "男士T恤"]
+
+# 商品排序测试数据
+sort_test_cases:
+  - sort_by: "price_asc"
+    expected_first_product: "男士T恤"
+    description: "价格从低到高"
+
+  - sort_by: "price_desc"
+    expected_first_product: "笔记本电脑"
+    description: "价格从高到低"
+
+  - sort_by: "sales_desc"
+    expected_first_product: "智能手机"
+    description: "销量从高到低"
+
+  - sort_by: "stock_desc"
+    expected_first_product: "男士T恤"
+    description: "库存从高到低"
+
+  - sort_by: "create_time_desc"
+    expected_first_product: "女士连衣裙"  # 假设最新创建
+    description: "创建时间从新到旧"
+
+# 商品操作测试数据（新增、编辑、删除）
+operation_test_cases:
+  # 新增商品
+  new_product:
+    name: "测试商品_{timestamp}"
+    category_id: 3
+    sku: "TEST-{random}"
+    price: 199.99
+    stock: 50
+    description: "这是一个测试商品"
+    status: "上架"
+
+  # 编辑商品
+  edit_product:
+    product_id: 1001  # 智能手机
+    updates:
+      price: 2799.99
+      stock: 120
+      description: "更新后的智能手机描述"
+
+  # 删除商品
+  delete_product:
+    product_id: 1002  # 笔记本电脑
+    confirm_message: "确定要删除这个商品吗？"
+
+  # 批量操作
+  batch_operations:
+    select_all: false
+    selected_products: [1001, 2001]  # 智能手机和男士T恤
+    operation: "下架"
+    confirm_message: "确定要下架选中的商品吗？"
+
+# 商品SKU测试数据
+sku_test_cases:
+  # 单规格商品
+  single_sku:
+    product_name: "单规格商品"
+    skus:
+      - sku: "SINGLE-001"
+        price: 99.99
+        stock: 100
+
+  # 多规格商品（颜色、尺寸）
+  multi_sku_color_size:
+    product_name: "多规格T恤"
+    attributes:
+      - name: "颜色"
+        values: ["红色", "蓝色", "黑色"]
+      - name: "尺寸"
+        values: ["S", "M", "L", "XL"]
+    skus:
+      - attributes: ["红色", "S"]
+        sku: "TSHIRT-RED-S"
+        price: 89.99
+        stock: 50
+      - attributes: ["蓝色", "M"]
+        sku: "TSHIRT-BLUE-M"
+        price: 89.99
+        stock: 60
+
+# 商品图片测试数据
+image_test_cases:
+  valid_images:
+    - path: "./test_images/product_1.jpg"
+      description: "主图"
+      is_main: true
+    - path: "./test_images/product_2.jpg"
+      description: "细节图1"
+      is_main: false
+    - path: "./test_images/product_3.jpg"
+      description: "细节图2"
+      is_main: false
+
+  invalid_images:
+    - path: "./test_images/invalid.pdf"
+      expected_error: "只支持图片格式"
+    - path: "./test_images/too_large.jpg"
+      size_mb: 11
+      expected_error: "图片大小不能超过10MB"
+    - path: "./test_images/wrong_format.bmp"
+      expected_error: "不支持该图片格式"
+
+# 商品导入/导出测试数据
+import_export_test:
+  import_file:
+    path: "./test_data/products_import.xlsx"
+    format: "excel"
+    expected_count: 10
+
+  export_formats: ["excel", "csv", "pdf"]
+  export_columns: ["ID", "名称", "分类", "价格", "库存", "状态"]
+
+# 商品验证规则
+validation_rules:
+  name:
+    required: true
+    min_length: 2
+    max_length: 100
+
+  price:
+    required: true
+    min_value: 0.01
+    max_value: 999999.99
+    decimal_places: 2
+
+  stock:
+    required: true
+    min_value: 0
+    max_value: 999999
+
+  sku:
+    required: true
+    pattern: "^[A-Z0-9-]+$"
+    max_length: 50
+
+# 边界测试数据
+boundary_test_cases:
+  # 商品名称边界
+  - name: "a"  # 最小长度
+    expected_valid: true
+    description: "商品名称最小长度"
+
+  - name: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"  # 最大长度
+    expected_valid: true
+    description: "商品名称最大长度"
+
+  - name: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"  # 超出最大长度
+    expected_valid: false
+    expected_error: "商品名称不能超过100个字符"
+    description: "商品名称超出最大长度"
+
+  # 价格边界
+  - price: 0.01  # 最小价格
+    expected_valid: true
+    description: "最小价格"
+
+  - price: 999999.99  # 最大价格
+    expected_valid: true
+    description: "最大价格"
+
+  - price: 0  # 零价格
+    expected_valid: false
+    expected_error: "价格必须大于0"
+    description: "零价格"
+
+  - price: 1000000  # 超出最大价格
+    expected_valid: false
+    expected_error: "价格不能超过999999.99"
+    description: "超出最大价格"
+
+  # 库存边界
+  - stock: 0  # 零库存
+    expected_valid: true
+    description: "零库存"
+
+  - stock: 999999  # 最大库存
+    expected_valid: true
+    description: "最大库存"
+
+  - stock: -1  # 负库存
+    expected_valid: false
+    expected_error: "库存不能为负数"
+    description: "负库存"
+
+# 性能测试数据
+performance_test:
+  bulk_operations:
+    product_count: 1000
+    batch_size: 100
+    expected_time: 30  # 秒
+
+  search_performance:
+    keyword: "测试"
+    expected_response_time: 2  # 秒
+
+# 测试用例分组
+test_case_groups:
+  smoke_test:
+    - "search_test_cases[0]"  # 基本搜索
+    - "filter_test_cases[0]"  # 基本筛选
+    - "operation_test_cases.new_product"  # 新增商品
+
+  regression_test:
+    - "search_test_cases"
+    - "filter_test_cases"
+    - "sort_test_cases"
+    - "operation_test_cases"
+    - "sku_test_cases"
+
+  security_test:
+    - "boundary_test_cases"
+    - "validation_rules"
+
+  performance_test:
+    - "performance_test"
+
+# 页面元素定位器
+page_elements:
+  # 商品列表页面
+  product_list:
+    search_input: { by: "id", value: "product-search" }
+    search_button: { by: "id", value: "search-btn" }
+    category_filter: { by: "id", value: "category-filter" }
+    price_filter: { by: "id", value: "price-filter" }
+    product_table: { by: "id", value: "product-table" }
+    add_product_button: { by: "id", value: "add-product-btn" }
+
+  # 商品表单页面
+  product_form:
+    name_input: { by: "id", value: "product-name" }
+    category_select: { by: "id", value: "product-category" }
+    price_input: { by: "id", value: "product-price" }
+    stock_input: { by: "id", value: "product-stock" }
+    description_textarea: { by: "id", value: "product-description" }
+    save_button: { by: "id", value: "save-btn" }
+    cancel_button: { by: "id", value: "cancel-btn" }
