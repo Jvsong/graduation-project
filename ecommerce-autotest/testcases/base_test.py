@@ -234,8 +234,10 @@ class BaseTest(unittest.TestCase):
         """获取测试状态"""
         # 检查是否有测试失败或错误
         if hasattr(self, '_outcome'):
-            result = self._outcome.result
-            if result.errors or result.failures:
+            result = getattr(self._outcome, 'result', None)
+            errors = getattr(result, 'errors', [])
+            failures = getattr(result, 'failures', [])
+            if errors or failures:
                 return "失败"
         return "通过"
 
@@ -243,12 +245,14 @@ class BaseTest(unittest.TestCase):
         """获取测试消息"""
         # 如果有错误信息，返回错误信息
         if hasattr(self, '_outcome'):
-            result = self._outcome.result
-            if result.errors:
-                error = result.errors[0][1]
+            result = getattr(self._outcome, 'result', None)
+            errors = getattr(result, 'errors', [])
+            failures = getattr(result, 'failures', [])
+            if errors:
+                error = errors[0][1]
                 return str(error)
-            elif result.failures:
-                failure = result.failures[0][1]
+            elif failures:
+                failure = failures[0][1]
                 return str(failure)
         return ""
 
@@ -290,8 +294,10 @@ class BaseTest(unittest.TestCase):
         """检查测试是否通过"""
         # 检查是否有未捕获的异常
         if hasattr(self, '_outcome'):
-            result = self._outcome.result
-            return not (result.errors or result.failures)
+            result = getattr(self._outcome, 'result', None)
+            errors = getattr(result, 'errors', [])
+            failures = getattr(result, 'failures', [])
+            return not (errors or failures)
         return True
 
     def _take_failure_screenshot(self) -> None:
@@ -577,9 +583,7 @@ class BaseTest(unittest.TestCase):
     @pytest.fixture(autouse=True)
     def pytest_setup_teardown(self):
         """pytest兼容性设置"""
-        self.setUp()
         yield
-        self.tearDown()
 
 
 if __name__ == "__main__":

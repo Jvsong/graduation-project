@@ -10,6 +10,7 @@ from typing import Dict, List, Any
 from selenium.webdriver.common.by import By
 
 from testcases.base_test import BaseTest
+from pages.login_page import LoginPage
 from pages.order_list_page import OrderListPage
 from pages.order_operation_page import OrderOperationPage
 from utils.data_manager import get_test_data_manager, load_test_data
@@ -32,9 +33,12 @@ class TestOrderManagement(BaseTest):
 
         # 加载订单测试数据
         cls.order_data = load_test_data('order')
-        cls.test_logger.info("订单测试数据加载完成")
+        cls.logger.info("订单测试数据加载完成")
+        cls.login_data = load_test_data('login')
+        cls.logger.info("登录测试数据加载完成")
 
         # 创建订单页面对象
+        cls.login_page = LoginPage(cls.driver)
         cls.order_list_page = OrderListPage(cls.driver)
         cls.order_operation_page = OrderOperationPage(cls.driver)
 
@@ -42,12 +46,37 @@ class TestOrderManagement(BaseTest):
         """测试方法初始化"""
         super().setUp()
 
+        self._login_before_test()
+
         # 每个测试开始前打开订单列表页面
         self.order_list_page.open_order_list_page()
         self.order_list_page.wait_for_order_table_loaded()
 
         # 验证订单列表页面元素
         assert self.order_list_page.verify_order_list_elements(), "订单列表页面元素验证失败"
+        self.visible_orders = self.order_list_page.get_order_rows()
+        if not self.visible_orders:
+            self.skipTest("当前订单列表为空，缺少可用于执行订单模块断言的测试数据")
+
+    def _login_before_test(self):
+        """测试前登录"""
+        self.login_page.open_login_page()
+        self.login_page.wait_for_login_page_load()
+
+        valid_users = self.login_data.get('valid_users', [])
+        if not valid_users:
+            username = "admin"
+            password = "admin123"
+        else:
+            user = valid_users[0]
+            username = user['username']
+            password = user['password']
+
+        self.login_page.login(username, password)
+        time.sleep(2)
+
+        assert self.login_page.is_login_successful(timeout=10), \
+            f"测试前登录失败，用户: {username}"
 
     def tearDown(self):
         """测试方法清理"""
@@ -636,10 +665,27 @@ class TestOrderPytest:
     def setup(self, driver):
         """测试初始化"""
         self.driver = driver
+        self.login_page = LoginPage(driver)
         self.order_list_page = OrderListPage(driver)
         self.order_operation_page = OrderOperationPage(driver)
         self.data_manager = get_test_data_manager()
         self.order_data = load_test_data('order')
+        self.login_data = load_test_data('login')
+
+        valid_users = self.login_data.get('valid_users', [])
+        if not valid_users:
+            username = "admin"
+            password = "admin123"
+        else:
+            user = valid_users[0]
+            username = user['username']
+            password = user['password']
+
+        self.login_page.open_login_page()
+        self.login_page.wait_for_login_page_load()
+        self.login_page.login(username, password)
+        assert self.login_page.is_login_successful(timeout=10), \
+            f"测试前登录失败，用户: {username}"
 
         # 打开订单列表页面
         self.order_list_page.open_order_list_page()

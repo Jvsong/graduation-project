@@ -9,6 +9,7 @@ import pytest
 from typing import Dict, List, Any
 
 from testcases.base_test import BaseTest
+from pages.login_page import LoginPage
 from pages.permission_page import PermissionPage
 from pages.user_list_page import UserListPage
 from pages.user_operation_page import UserOperationPage
@@ -32,9 +33,12 @@ class TestPermissionManagement(BaseTest):
 
         # 加载用户测试数据（包含权限数据）
         cls.user_data = load_test_data('user')
-        cls.test_logger.info("权限测试数据加载完成")
+        cls.logger.info("权限测试数据加载完成")
+        cls.login_data = load_test_data('login')
+        cls.logger.info("登录测试数据加载完成")
 
         # 创建页面对象
+        cls.login_page = LoginPage(cls.driver)
         cls.permission_page = PermissionPage(cls.driver)
         cls.user_list_page = UserListPage(cls.driver)
         cls.user_operation_page = UserOperationPage(cls.driver)
@@ -43,9 +47,31 @@ class TestPermissionManagement(BaseTest):
         """测试方法初始化"""
         super().setUp()
 
+        self._login_before_test()
+
         # 每个测试开始前打开权限管理页面（角色列表）
         self.permission_page.open_role_list_page()
         self.permission_page.wait_for_role_table_loaded()
+
+    def _login_before_test(self):
+        """测试前登录"""
+        self.login_page.open_login_page()
+        self.login_page.wait_for_login_page_load()
+
+        valid_users = self.login_data.get('valid_users', [])
+        if not valid_users:
+            username = "admin"
+            password = "admin123"
+        else:
+            user = valid_users[0]
+            username = user['username']
+            password = user['password']
+
+        self.login_page.login(username, password)
+        time.sleep(2)
+
+        assert self.login_page.is_login_successful(timeout=10), \
+            f"测试前登录失败，用户: {username}"
 
     def tearDown(self):
         """测试方法清理"""

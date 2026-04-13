@@ -602,6 +602,63 @@ class ProductOperationPage(BasePage):
 
 
 # 快捷函数
+
+
+    def fill_product_name(self, name: str) -> None:
+        self.enter_product_name(name)
+
+    def fill_product_price(self, price: float) -> None:
+        self.enter_price(price)
+
+    def fill_product_stock(self, stock: int) -> None:
+        self.enter_stock(stock)
+
+    def fill_product_description(self, description: str) -> None:
+        self.enter_description(description)
+
+    def click_save_button(self) -> None:
+        self.click_save()
+
+    def click_cancel_button(self) -> None:
+        self.click_cancel()
+
+    def get_success_message(self, timeout: int = 5) -> str:
+        return self.get_text(self.SUCCESS_MESSAGE, timeout=timeout)
+
+    def get_error_message(self, timeout: int = 5) -> str:
+        return self.get_text(self.ERROR_MESSAGE, timeout=timeout)
+
+    def fill_product_name(self, name: str) -> None:
+        self.enter_product_name(name)
+
+    def fill_product_price(self, price: float) -> None:
+        self.enter_price(price)
+
+    def fill_product_stock(self, stock: int) -> None:
+        self.enter_stock(stock)
+
+    def fill_product_description(self, description: str) -> None:
+        self.enter_description(description)
+
+    def select_category_by_id(self, category_id: int) -> None:
+        category_select = Select(self.find_element(self.CATEGORY_SELECT))
+        category_select.select_by_index(category_id)
+
+    def select_product_status(self, status: str) -> None:
+        self.select_status(status)
+
+    def click_save_button(self) -> None:
+        self.click_save()
+
+    def click_cancel_button(self) -> None:
+        self.click_cancel()
+
+    def get_success_message(self, timeout: int = 5) -> str:
+        return self.get_text(self.SUCCESS_MESSAGE, timeout=timeout)
+
+    def get_error_message(self, timeout: int = 5) -> str:
+        return self.get_text(self.ERROR_MESSAGE, timeout=timeout)
+
 def create_product_operation_page(driver):
     """
     创建商品操作页面对象的快捷函数

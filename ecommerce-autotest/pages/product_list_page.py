@@ -246,33 +246,56 @@ class ProductListPage(BasePage):
 
     def get_product_rows(self) -> List[Dict[str, Any]]:
         """
-        获取商品行数据
-
+        ???????
         Returns:
-            List[Dict[str, Any]]: 商品行数据列表
+            List[Dict[str, Any]]: ???????
         """
         rows = self.find_elements(self.TABLE_ROWS, timeout=5)
         products = []
 
         for i, row in enumerate(rows):
             try:
-                # 获取行内单元格数据
+                empty_cells = row.find_elements(By.CSS_SELECTOR, 'td.empty-cell')
+                if empty_cells:
+                    continue
+
                 cells = row.find_elements(By.TAG_NAME, "td")
+                if len(cells) < 6:
+                    continue
+
+                name = ""
+                description = ""
+                name_elements = row.find_elements(By.CSS_SELECTOR, '.product-name')
+                desc_elements = row.find_elements(By.CSS_SELECTOR, '.product-desc')
+                if name_elements:
+                    name = name_elements[0].text.strip()
+                elif len(cells) > 1:
+                    name = cells[1].text.splitlines()[0].strip()
+
+                if desc_elements:
+                    description = desc_elements[0].text.strip()
+                elif len(cells) > 1:
+                    lines = [line.strip() for line in cells[1].text.splitlines() if line.strip()]
+                    if len(lines) > 1:
+                        description = lines[1]
 
                 product_data = {
                     "row_index": i,
-                    "name": cells[1].text if len(cells) > 1 else "",
-                    "category": cells[2].text if len(cells) > 2 else "",
-                    "price": cells[3].text if len(cells) > 3 else "",
-                    "stock": cells[4].text if len(cells) > 4 else "",
-                    "status": cells[5].text if len(cells) > 5 else "",
+                    "name": name,
+                    "description": description,
+                    "category": cells[2].text.strip() if len(cells) > 2 else "",
+                    "price": cells[3].text.strip() if len(cells) > 3 else "",
+                    "stock": cells[4].text.strip() if len(cells) > 4 else "",
+                    "status": cells[5].text.strip() if len(cells) > 5 else "",
                 }
-                products.append(product_data)
+
+                if product_data['name']:
+                    products.append(product_data)
 
             except Exception as e:
-                self.logger.warning(f"获取第 {i} 行商品数据失败: {e}")
+                self.logger.warning(f"???{i} ???????: {e}")
 
-        self.logger.debug(f"获取到 {len(products)} 条商品数据")
+        self.logger.debug(f"???{len(products)} ?????")
         return products
 
     def select_product_by_index(self, index: int) -> None:
@@ -363,13 +386,9 @@ class ProductListPage(BasePage):
         """
         self.logger.info(f"批量操作: {operation}")
 
-        # 选择批量操作类型
-        operation_select = (By.ID, "batch-operation-select")
-        self.click(operation_select)
-
-        # 选择具体操作
-        operation_option = (By.XPATH, f"//option[text()='{operation}']")
-        self.click(operation_option)
+        # 这里是原生 select，直接点击 option 容易卡在等待或被浏览器拦截
+        operation_select = Select(self.find_element((By.ID, "batch-operation-select")))
+        operation_select.select_by_visible_text(operation)
 
         # 点击批量操作按钮
         self.click(self.BATCH_OPERATION_BUTTON)

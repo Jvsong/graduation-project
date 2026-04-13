@@ -23,10 +23,11 @@ class LoginPage(BasePage):
     REMEMBER_ME_CHECKBOX = (By.ID, "remember-me")
     FORGOT_PASSWORD_LINK = (By.ID, "forgot-password")
 
-    DASHBOARD_MARKER = (By.CSS_SELECTOR, ".dashboard-container")
-    TOP_NAVBAR = (By.CSS_SELECTOR, ".top-navbar")
-    SUB_NAVBAR = (By.CSS_SELECTOR, ".sub-navbar")
+    DASHBOARD_MARKER = (By.CSS_SELECTOR, ".main-content")
+    TOP_NAVBAR = (By.CSS_SELECTOR, ".navbar")
+    SUB_NAVBAR = (By.CSS_SELECTOR, "#sidebar")
     APP_ROOT = (By.ID, "app")
+    CURRENT_USERNAME = (By.CSS_SELECTOR, ".user-info span")
 
     def __init__(self, driver):
         super().__init__(driver)
@@ -77,11 +78,12 @@ class LoginPage(BasePage):
     def is_login_successful(self, timeout: int = 10) -> bool:
         try:
             current_url = self.get_current_url()
-            if "/admin/dashboard" in current_url:
+            if "/admin/dashboard" in current_url or "/admin/products" in current_url or "/admin/orders" in current_url:
                 return True
 
             token = self.execute_script("return window.localStorage.getItem('token');")
-            if token and (
+            auth_state = self.execute_script("return window.localStorage.getItem('auth_state');")
+            if (token or auth_state) and (
                 self.is_element_present(self.TOP_NAVBAR, timeout=3)
                 or self.is_element_present(self.SUB_NAVBAR, timeout=3)
                 or self.is_element_present(self.DASHBOARD_MARKER, timeout=3)

@@ -10,6 +10,7 @@ from typing import Dict, List, Any
 from selenium.webdriver.common.by import By
 
 from testcases.base_test import BaseTest
+from pages.login_page import LoginPage
 from pages.user_list_page import UserListPage
 from pages.user_operation_page import UserOperationPage
 from utils.data_manager import get_test_data_manager, load_test_data
@@ -32,9 +33,12 @@ class TestUserManagement(BaseTest):
 
         # 加载用户测试数据
         cls.user_data = load_test_data('user')
-        cls.test_logger.info("用户测试数据加载完成")
+        cls.logger.info("用户测试数据加载完成")
+        cls.login_data = load_test_data('login')
+        cls.logger.info("登录测试数据加载完成")
 
         # 创建用户页面对象
+        cls.login_page = LoginPage(cls.driver)
         cls.user_list_page = UserListPage(cls.driver)
         cls.user_operation_page = UserOperationPage(cls.driver)
 
@@ -42,12 +46,34 @@ class TestUserManagement(BaseTest):
         """测试方法初始化"""
         super().setUp()
 
+        self._login_before_test()
+
         # 每个测试开始前打开用户列表页面
         self.user_list_page.open_user_list_page()
         self.user_list_page.wait_for_user_table_loaded()
 
         # 验证用户列表页面元素
         # assert self.user_list_page.verify_user_list_elements(), "用户列表页面元素验证失败"
+
+    def _login_before_test(self):
+        """测试前登录"""
+        self.login_page.open_login_page()
+        self.login_page.wait_for_login_page_load()
+
+        valid_users = self.login_data.get('valid_users', [])
+        if not valid_users:
+            username = "admin"
+            password = "admin123"
+        else:
+            user = valid_users[0]
+            username = user['username']
+            password = user['password']
+
+        self.login_page.login(username, password)
+        time.sleep(2)
+
+        assert self.login_page.is_login_successful(timeout=10), \
+            f"测试前登录失败，用户: {username}"
 
     def tearDown(self):
         """测试方法清理"""

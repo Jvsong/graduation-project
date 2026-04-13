@@ -330,6 +330,22 @@ class TestLogger:
         self.logger.debug(f"{data_type}: {data}")
 
 
+
+    def debug(self, message: str, *args, **kwargs) -> None:
+        self.logger.debug(message, *args, **kwargs)
+
+    def info(self, message: str, *args, **kwargs) -> None:
+        self.logger.info(message, *args, **kwargs)
+
+    def warning(self, message: str, *args, **kwargs) -> None:
+        self.logger.warning(message, *args, **kwargs)
+
+    def error(self, message: str, *args, **kwargs) -> None:
+        self.logger.error(message, *args, **kwargs)
+
+    def exception(self, message: str, *args, **kwargs) -> None:
+        self.logger.exception(message, *args, **kwargs)
+
 # 快捷函数
 def get_logger(name: str = "ecommerce_test") -> logging.Logger:
     """

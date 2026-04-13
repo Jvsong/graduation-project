@@ -9,11 +9,11 @@ environment:
   test_env: "shop-system"  # test/staging/prod/shop-system
 
 browser:
-  name: "edge"  # chrome/firefox/edge
+  name: "chrome"  # chrome/firefox/edge
   headless: false
   window_size: "1920x1080"
-  implicit_wait: 10
-  page_load_timeout: 30
+  implicit_wait: 2
+  page_load_timeout: 20
   download_path: "./downloads"
 
 test:
