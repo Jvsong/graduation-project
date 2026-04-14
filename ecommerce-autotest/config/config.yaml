@@ -10,7 +10,7 @@ environment:
 
 browser:
   name: "chrome"  # chrome/firefox/edge
-  headless: false
+  headless: true
   window_size: "1920x1080"
   implicit_wait: 2
   page_load_timeout: 20

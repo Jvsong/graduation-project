@@ -29,6 +29,21 @@ except ImportError as e:
     print(f"导入工具模块失败: {e}")
     print("请确保所有依赖已安装并运行在正确的环境中")
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+AUTOTEST_ROOT = Path(__file__).resolve().parent
+
+
+def build_html_report_path(test_type: str) -> Path:
+    """构建统一的 HTML 报告路径。"""
+    config = get_config()
+    output_dir = config.get('report.output_dir', './reports')
+    report_root = (PROJECT_ROOT / output_dir).resolve() / 'html'
+    report_root.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return report_root / f"{test_type}_{timestamp}.html"
+
+
 def print_banner():
     """打印项目横幅"""
     banner = """
@@ -270,11 +285,7 @@ def run_tests(test_type, args):
     """运行测试"""
     print(f"运行 {test_type} 测试...")
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    report_dir = os.path.join('reports', f'report_{timestamp}')
-    os.makedirs(report_dir, exist_ok=True)
-
-    report_file = os.path.join(report_dir, 'test_report.html')
+    report_file = str(build_html_report_path(test_type))
 
     # 构建pytest命令
     pytest_args = [
@@ -314,7 +325,7 @@ def run_tests(test_type, args):
 
     try:
         start_time = time.time()
-        result = subprocess.run(pytest_args, check=False)
+        result = subprocess.run(pytest_args, check=False, cwd=AUTOTEST_ROOT)
         end_time = time.time()
 
         execution_time = end_time - start_time
