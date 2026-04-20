@@ -14,6 +14,7 @@ from utils.test_executor import TestExecutor, TestResult, get_test_executor
 from utils.parallel_executor import ParallelExecutor
 from utils.scheduler import TaskScheduler
 from utils.chart_generator import ChartGenerator
+from utils.ai_analysis import AIAnalysisService
 from utils.common import (
     file_utils, string_utils, validation_utils,
     time_utils, data_utils
@@ -31,6 +32,7 @@ __all__ = [
     'ParallelExecutor',
     'TaskScheduler',
     'ChartGenerator',
+    'AIAnalysisService',
     'file_utils', 'string_utils', 'validation_utils',
     'time_utils', 'data_utils',
 ]

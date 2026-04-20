@@ -20,8 +20,18 @@ class LoginPage(BasePage):
     PASSWORD_INPUT = (By.ID, "password")
     LOGIN_BUTTON = (By.ID, "login-btn")
     ERROR_MESSAGE = (By.ID, "error-msg")
-    REMEMBER_ME_CHECKBOX = (By.ID, "remember-me")
-    FORGOT_PASSWORD_LINK = (By.ID, "forgot-password")
+    REMEMBER_ME_CHECKBOX = (
+        By.XPATH,
+        "//*[@id='remember-me' or @for='remember-me' or self::label[contains(normalize-space(.), '记住我')] or .//span[contains(normalize-space(.), '记住我')]]",
+    )
+    FORGOT_PASSWORD_LINK = (
+        By.XPATH,
+        "//*[@id='forgot-password' or self::a[contains(normalize-space(.), '忘记密码')] or self::button[contains(normalize-space(.), '忘记密码')] or .//span[contains(normalize-space(.), '忘记密码')]]",
+    )
+    FORGOT_PASSWORD_MODAL = (
+        By.XPATH,
+        "//div[contains(@class,'el-dialog') and .//*[contains(normalize-space(.), '忘记密码')]]",
+    )
 
     DASHBOARD_MARKER = (By.CSS_SELECTOR, ".main-content")
     TOP_NAVBAR = (By.CSS_SELECTOR, ".navbar")
@@ -54,10 +64,18 @@ class LoginPage(BasePage):
         self.click(self.LOGIN_BUTTON)
 
     def click_remember_me(self) -> None:
-        self.click(self.REMEMBER_ME_CHECKBOX)
+        element = self.find_clickable_element(self.REMEMBER_ME_CHECKBOX, timeout=5)
+        try:
+            element.click()
+        except Exception:
+            self.driver.execute_script("arguments[0].click();", element)
 
     def click_forgot_password(self) -> None:
-        self.click(self.FORGOT_PASSWORD_LINK)
+        element = self.find_clickable_element(self.FORGOT_PASSWORD_LINK, timeout=5)
+        try:
+            element.click()
+        except Exception:
+            self.driver.execute_script("arguments[0].click();", element)
 
     def login(self, username: str, password: str, remember_me: bool = False) -> None:
         self.enter_username(username)
@@ -98,7 +116,20 @@ class LoginPage(BasePage):
         return self.is_element_present(self.ERROR_MESSAGE, timeout=timeout)
 
     def is_remember_me_checked(self) -> bool:
-        return self.is_selected(self.REMEMBER_ME_CHECKBOX)
+        try:
+            checkbox = self.find_element((By.ID, "remember-me"), timeout=2)
+            return checkbox.is_selected()
+        except Exception:
+            try:
+                element = self.find_element(self.REMEMBER_ME_CHECKBOX, timeout=2)
+                checked = element.get_attribute("aria-checked")
+                classes = element.get_attribute("class") or ""
+                return checked == "true" or "is-checked" in classes
+            except Exception:
+                return False
+
+    def is_forgot_password_dialog_visible(self, timeout: int = 5) -> bool:
+        return self.is_element_present(self.FORGOT_PASSWORD_MODAL, timeout=timeout)
 
     def is_element_present(self, locator: Tuple[By, str], timeout: Optional[int] = None) -> bool:
         try:

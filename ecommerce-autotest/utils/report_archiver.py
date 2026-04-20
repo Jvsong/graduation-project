@@ -109,7 +109,7 @@ class ReportMetadata:
             report_data: 报告数据字典
         """
         # 更新执行信息
-        execution_info = report_data.get('execution_info', {})
+        execution_info = report_data.get('execution_info', {}) or report_data.get('execution', {})
         if execution_info.get('start_time'):
             try:
                 self.execution_time = datetime.fromisoformat(execution_info['start_time'])
@@ -121,7 +121,7 @@ class ReportMetadata:
         self.browser = execution_info.get('browser', 'chrome')
 
         # 更新测试结果
-        stats = report_data.get('global_stats', {})
+        stats = report_data.get('global_stats', {}) or report_data.get('stats', {})
         self.total_tests = stats.get('total_tests', 0)
         self.passed_tests = stats.get('passed_tests', 0)
         self.failed_tests = stats.get('failed_tests', 0)
@@ -139,19 +139,25 @@ class ReportMetadata:
             bool: 归档是否成功
         """
         try:
-            # 创建归档目录
-            os.makedirs(archive_dir, exist_ok=True)
+            archive_time = datetime.now()
+            archive_subdir = os.path.join(
+                archive_dir,
+                archive_time.strftime("%Y"),
+                archive_time.strftime("%m"),
+                archive_time.strftime("%d")
+            )
+            os.makedirs(archive_subdir, exist_ok=True)
 
             # 生成归档文件名（包含时间戳和报告ID）
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = archive_time.strftime("%Y%m%d_%H%M%S")
             archive_filename = f"{timestamp}_{self.report_id}_{self.filename}"
-            self.archive_path = os.path.join(archive_dir, archive_filename)
+            self.archive_path = os.path.join(archive_subdir, archive_filename)
 
             # 复制文件到归档目录
             shutil.copy2(self.report_path, self.archive_path)
 
             # 更新归档信息
-            self.archive_time = datetime.now()
+            self.archive_time = archive_time
             self.status = ArchiveStatus.ARCHIVED
 
             return True

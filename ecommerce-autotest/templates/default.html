@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ project.name }} - 测试报告</title>
+    <title>{{project_name}} - 测试报告</title>
     <style>
         /* 基础样式 */
         * {
@@ -175,14 +175,16 @@
         }
 
         .chart {
-            height: 250px;
+            min-height: 180px;
             background: #f8f9fa;
             border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            padding: 18px;
             font-size: 14px;
             color: #6c757d;
+        }
+
+        .chart-text {
+            line-height: 1.8;
         }
 
         /* 测试结果表格 */
@@ -267,6 +269,12 @@
         .duration {
             font-family: 'Courier New', monospace;
             font-weight: 600;
+        }
+
+        .ai-cell {
+            max-width: 260px;
+            color: #334155;
+            font-size: 13px;
         }
 
         .error-details {
@@ -371,6 +379,123 @@
             color: #495057;
         }
 
+        .ai-summary-section {
+            margin-bottom: 30px;
+            padding: 24px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #eff7ff 0%, #f8fbff 100%);
+            border: 1px solid #dbeafe;
+        }
+
+        .ai-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin: 18px 0;
+        }
+
+        .ai-summary-card {
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 12px;
+            box-shadow: inset 0 0 0 1px #e2e8f0;
+        }
+
+        .ai-summary-label {
+            font-size: 12px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .ai-summary-value {
+            font-size: 15px;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .ai-summary-text {
+            font-size: 15px;
+            color: #334155;
+            line-height: 1.8;
+        }
+
+        .ai-list {
+            padding-left: 20px;
+            color: #334155;
+        }
+
+        .ai-list li + li {
+            margin-top: 8px;
+        }
+
+        .ai-failure-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .ai-failure-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+        }
+
+        .ai-failure-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .ai-failure-head h3 {
+            font-size: 17px;
+            color: #1e293b;
+        }
+
+        .ai-meta {
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .severity-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 72px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .severity-low {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .severity-medium {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .severity-high {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .empty-state {
+            padding: 18px;
+            text-align: center;
+            color: #64748b;
+            background: #f8fafc;
+            border-radius: 10px;
+        }
+
         /* 底部 */
         .footer {
             text-align: center;
@@ -417,28 +542,28 @@
         <div class="header">
             <div class="project-info">
                 <div>
-                    <div class="project-name">{{ project.name }}</div>
+                    <div class="project-name">{{project_name}}</div>
                     <div style="color: #6c757d; margin-top: 5px;">自动化测试报告</div>
                 </div>
-                <div class="project-version">版本 {{ project.version }}</div>
+                <div class="project-version">版本 {{project_version}}</div>
             </div>
 
             <div class="report-info">
                 <div class="info-item">
                     <i>📅</i>
-                    <span>生成时间: {{ execution.end_time }}</span>
+                    <span>生成时间: {{execution_end_time}}</span>
                 </div>
                 <div class="info-item">
                     <i>⏱️</i>
-                    <span>执行时长: {{ execution.duration }}</span>
+                    <span>执行时长: {{execution_duration}}</span>
                 </div>
                 <div class="info-item">
                     <i>🏷️</i>
-                    <span>环境: {{ execution.environment }}</span>
+                    <span>环境: {{execution_environment}}</span>
                 </div>
                 <div class="info-item">
                     <i>🖥️</i>
-                    <span>浏览器: {{ execution.browser }}</span>
+                    <span>浏览器: {{execution_browser}}</span>
                 </div>
             </div>
         </div>
@@ -447,26 +572,45 @@
         <div class="stats-cards">
             <div class="card total">
                 <div class="card-label">总测试数</div>
-                <div class="card-value">{{ stats.total_tests }}</div>
+                <div class="card-value">{{stats_total_tests}}</div>
             </div>
             <div class="card passed">
                 <div class="card-label">通过</div>
-                <div class="card-value">{{ stats.passed_tests }}</div>
-                <div class="card-percentage">{{ stats.pass_rate }}%</div>
+                <div class="card-value">{{stats_passed_tests}}</div>
+                <div class="card-percentage">{{stats_pass_rate}}%</div>
             </div>
             <div class="card failed">
                 <div class="card-label">失败</div>
-                <div class="card-value">{{ stats.failed_tests }}</div>
+                <div class="card-value">{{stats_failed_tests}}</div>
             </div>
             <div class="card error">
                 <div class="card-label">错误</div>
-                <div class="card-value">{{ stats.error_tests }}</div>
+                <div class="card-value">{{stats_error_tests}}</div>
             </div>
             <div class="card rate">
                 <div class="card-label">通过率</div>
-                <div class="card-value">{{ stats.pass_rate }}%</div>
+                <div class="card-value">{{stats_pass_rate}}%</div>
             </div>
         </div>
+
+        <section class="ai-summary-section">
+            <div class="section-title">AI 测试总结</div>
+            <p class="ai-summary-text">{{ai_summary_summary}}</p>
+            <div class="ai-summary-grid">
+                <div class="ai-summary-card">
+                    <div class="ai-summary-label">高风险模块</div>
+                    <div class="ai-summary-value">{{ai_risk_modules_text}}</div>
+                </div>
+                <div class="ai-summary-card">
+                    <div class="ai-summary-label">回归建议</div>
+                    <div class="ai-summary-value">{{ai_summary_rerun_suggestion}}</div>
+                </div>
+            </div>
+            <div class="ai-summary-label">建议处理项</div>
+            <ul class="ai-list">
+                {{ai_recommendations_html}}
+            </ul>
+        </section>
 
         <!-- 执行信息 -->
         <div class="execution-info">
@@ -474,27 +618,27 @@
             <div class="execution-grid">
                 <div class="execution-item">
                     <div class="execution-label">开始时间</div>
-                    <div class="execution-value">{{ execution.start_time }}</div>
+                    <div class="execution-value">{{execution_start_time}}</div>
                 </div>
                 <div class="execution-item">
                     <div class="execution-label">结束时间</div>
-                    <div class="execution-value">{{ execution.end_time }}</div>
+                    <div class="execution-value">{{execution_end_time}}</div>
                 </div>
                 <div class="execution-item">
                     <div class="execution-label">总时长</div>
-                    <div class="execution-value">{{ execution.total_duration }}</div>
+                    <div class="execution-value">{{execution_total_duration}}</div>
                 </div>
                 <div class="execution-item">
                     <div class="execution-label">平均时长</div>
-                    <div class="execution-value">{{ execution.average_duration }}</div>
+                    <div class="execution-value">{{execution_average_duration}}</div>
                 </div>
                 <div class="execution-item">
                     <div class="execution-label">重试次数</div>
-                    <div class="execution-value">{{ execution.retry_count }}</div>
+                    <div class="execution-value">{{execution_retry_count}}</div>
                 </div>
                 <div class="execution-item">
                     <div class="execution-label">执行模式</div>
-                    <div class="execution-value">{{ execution.execution_mode }}</div>
+                    <div class="execution-value">{{execution_execution_mode}}</div>
                 </div>
             </div>
         </div>
@@ -504,36 +648,40 @@
             <div class="section-title">测试结果分布</div>
             <div class="charts">
                 <div class="chart">
-                    <!-- 这里将放置饼图 -->
-                    饼图: 通过 {{ stats.passed_tests }}, 失败 {{ stats.failed_tests }}, 错误 {{ stats.error_tests }}
+                    <div class="chart-text">
+                        <strong>结果概览</strong><br>
+                        通过：{{stats_passed_tests}}<br>
+                        失败：{{stats_failed_tests}}<br>
+                        错误：{{stats_error_tests}}<br>
+                        跳过：{{stats_skipped_tests}}
+                    </div>
                 </div>
                 <div class="chart">
-                    <!-- 这里将放置柱状图 -->
-                    柱状图: 各模块通过率
+                    <div class="chart-text">
+                        <strong>执行判断</strong><br>
+                        当前环境：{{execution_environment}}<br>
+                        浏览器：{{execution_browser}}<br>
+                        执行模式：{{execution_execution_mode}}<br>
+                        平均时长：{{execution_average_duration}}
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- 模块统计 -->
-        {% if module_stats %}
         <div class="results-section">
             <div class="section-title">模块统计</div>
             <div class="module-stats">
-                {% for module in module_stats %}
-                <div class="module-item {% if module.pass_rate >= 80 %}module-passed{% else %}module-failed{% endif %}">
-                    <div class="module-name">{{ module.name }}</div>
-                    <div class="module-progress">
-                        <div class="module-progress-bar" style="width: {{ module.pass_rate }}%"></div>
-                    </div>
-                    <div class="module-info">
-                        <span>{{ module.passed }}/{{ module.total }} 通过</span>
-                        <span>{{ module.pass_rate }}%</span>
-                    </div>
-                </div>
-                {% endfor %}
+                {{module_stats_html}}
             </div>
         </div>
-        {% endif %}
+
+        <div class="results-section">
+            <div class="section-title">AI 失败分析</div>
+            <div class="ai-failure-grid">
+                {{ai_failure_cards_html}}
+            </div>
+        </div>
 
         <!-- 详细结果表格 -->
         <div class="results-section">
@@ -549,37 +697,12 @@
                             <th>时长 (秒)</th>
                             <th>重试次数</th>
                             <th>错误信息</th>
+                            <th>AI 分析</th>
                             <th>截图</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for test in test_results %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td>
-                                <div class="test-name">{{ test.name }}</div>
-                                <div class="test-module">{{ test.module }}</div>
-                            </td>
-                            <td>{{ test.module }}</td>
-                            <td>
-                                <span class="status-badge status-{{ test.status }}">
-                                    {{ test.status }}
-                                </span>
-                            </td>
-                            <td class="duration">{{ test.duration }}</td>
-                            <td>{{ test.retry_count }}</td>
-                            <td class="error-details" title="{{ test.error_message }}">
-                                {{ test.error_message|truncate(50) if test.error_message else '-' }}
-                            </td>
-                            <td>
-                                {% if test.screenshot %}
-                                <a href="{{ test.screenshot }}" target="_blank">查看</a>
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
+                        {{test_results_rows_html}}
                     </tbody>
                 </table>
             </div>
@@ -587,7 +710,7 @@
 
         <!-- 底部 -->
         <div class="footer">
-            <p>报告由 {{ project.name }} 生成 | 生成时间: {{ execution.end_time }}</p>
+            <p>报告由 {{project_name}} 生成 | 生成时间: {{execution_end_time}}</p>
             <p>© 2026 电商后台自动化测试系统. 保留所有权利.</p>
         </div>
     </div>
@@ -609,7 +732,7 @@
             const statusBadges = document.querySelectorAll('.status-badge');
             statusBadges.forEach(badge => {
                 const status = badge.textContent.trim().toLowerCase();
-                badge.classList.add(`status-${status}`);
+                badge.classList.add('status-' + status);
             });
         });
     </script>

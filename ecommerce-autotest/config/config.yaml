@@ -42,6 +42,21 @@ report:
     bcc: []  # 密送列表
     subject_template: "测试报告 - {project_name} - {timestamp}"
 
+ai:
+  enabled: true
+  provider: "openai"
+  api_base: "https://api.openai.com/v1"
+  api_key: "sk-2f143c182ab6464b9af7c787f0fdef75"
+  model: "gpt-4.1-mini"
+  chat_endpoint: "/chat/completions"
+  timeout: 45
+  temperature: 0.2
+  analyze_failures: true
+  generate_summary: true
+  max_input_chars: 6000
+  summary_max_items: 5
+  extra_headers: {}
+
 logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

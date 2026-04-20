@@ -13,6 +13,7 @@ import json
 import yaml
 from datetime import datetime
 from pathlib import Path
+from typing import Optional, Tuple
 
 # 导入自定义工具
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -22,7 +23,8 @@ try:
     from utils.report_archiver import ReportArchiver
     from utils.html_report_generator import HTMLReportGenerator
     from utils.report_data import ReportData, create_report_data
-    from utils.config_manager import get_config
+    from utils.config_manager import get_config, init_config
+    from utils.ai_analysis import AIAnalysisService
     from utils.test_executor import TestExecutor
     from utils.parallel_executor import ParallelExecutor
 except ImportError as e:
@@ -31,17 +33,21 @@ except ImportError as e:
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 AUTOTEST_ROOT = Path(__file__).resolve().parent
+SUPPORTED_TEST_TYPES = ['all', 'login', 'product', 'order', 'user', 'permission', 'smoke', 'regression']
+SUPPORTED_COMMANDS = ['check', 'ai-check', 'list', 'cleanup', 'install-drivers', 'run', 'test', 'help', *SUPPORTED_TEST_TYPES]
 
 
 def build_html_report_path(test_type: str) -> Path:
     """构建统一的 HTML 报告路径。"""
+    init_config(str(AUTOTEST_ROOT / 'config' / 'config.yaml'))
     config = get_config()
     output_dir = config.get('report.output_dir', './reports')
     report_root = (PROJECT_ROOT / output_dir).resolve() / 'html'
-    report_root.mkdir(parents=True, exist_ok=True)
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return report_root / f"{test_type}_{timestamp}.html"
+    day_stamp = datetime.now().strftime("%Y-%m-%d")
+    time_stamp = datetime.now().strftime("%H%M%S")
+    report_dir = report_root / day_stamp / test_type / time_stamp
+    report_dir.mkdir(parents=True, exist_ok=True)
+    return report_dir / f"{test_type}.html"
 
 
 def print_banner():
@@ -56,24 +62,42 @@ def print_banner():
     """
     print(banner)
 
+
+def print_quick_start():
+    """打印更简洁的快速使用说明。"""
+    print("常用命令:")
+    print("  python run.py check                 # 检查环境和配置")
+    print("  python run.py list                  # 查看可运行模块")
+    print("  python run.py ai-check              # 检查 AI 配置和接口可用性")
+    print("  python run.py login                 # 运行登录测试")
+    print("  python run.py product               # 运行商品测试")
+    print("  python run.py smoke                 # 运行冒烟测试")
+    print("  python run.py all -j 4              # 并行运行全部测试")
+    print("  python run.py regression --headless # 无头运行回归测试")
+    print("")
+    print("兼容旧写法:")
+    print("  python run.py --run login")
+    print("  python run.py --check")
+    print("")
+
 def check_dependencies():
     """检查项目依赖"""
     print("检查项目依赖...")
 
-    required_packages = [
-        'selenium',
-        'pytest',
-        'pytest-html',
-        'PyYAML',
-        'openpyxl',
-        'Pillow',
-        'requests'
-    ]
+    required_packages = {
+        'selenium': 'selenium',
+        'pytest': 'pytest',
+        'pytest-html': 'pytest_html',
+        'PyYAML': 'yaml',
+        'openpyxl': 'openpyxl',
+        'Pillow': 'PIL',
+        'requests': 'requests',
+    }
 
     missing_packages = []
-    for package in required_packages:
+    for package, import_name in required_packages.items():
         try:
-            __import__(package.replace('-', '_'))
+            __import__(import_name)
         except ImportError:
             missing_packages.append(package)
 
@@ -89,11 +113,11 @@ def check_config():
     """检查配置文件"""
     print("检查配置文件...")
 
-    config_path = os.path.join('config', 'config.yaml')
-    example_path = os.path.join('config', 'config.yaml.example')
+    config_path = AUTOTEST_ROOT / 'config' / 'config.yaml'
+    example_path = AUTOTEST_ROOT / 'config' / 'config.yaml.example'
 
-    if not os.path.exists(config_path) or os.path.getsize(config_path) == 0:
-        if os.path.exists(example_path):
+    if not config_path.exists() or config_path.stat().st_size == 0:
+        if example_path.exists():
             print(f"配置文件 {config_path} 不存在或为空")
             print(f"正在从 {example_path} 复制配置模板...")
             try:
@@ -114,6 +138,7 @@ def check_config():
             import yaml
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = yaml.safe_load(f)
+            init_config(str(config_path))
 
             base_url = config.get('environment', {}).get('base_url', '')
             if not base_url or base_url == 'http://test.ecommerce.com/admin':
@@ -122,11 +147,35 @@ def check_config():
                 return False
 
             print(f"配置文件检查通过，base_url: {base_url}")
+
+            ai_enabled = config.get('ai', {}).get('enabled', False)
+            if ai_enabled:
+                ai_api_base = config.get('ai', {}).get('api_base', '')
+                ai_model = config.get('ai', {}).get('model', '')
+                print(f"AI 配置已启用，api_base: {ai_api_base}, model: {ai_model}")
             return True
 
         except Exception as e:
             print(f"配置文件解析失败: {e}")
             return False
+
+
+def check_ai_service():
+    """检查 AI 服务配置与可用性。"""
+    print("检查 AI 服务...")
+    init_config(str(AUTOTEST_ROOT / 'config' / 'config.yaml'))
+    config = get_config()
+    ai_service = AIAnalysisService(config)
+    result = ai_service.health_check()
+
+    print(f"状态: {result.get('status')}")
+    print(f"信息: {result.get('message')}")
+    if result.get('api_base'):
+        print(f"接口地址: {result.get('api_base')}")
+    if result.get('model'):
+        print(f"模型: {result.get('model')}")
+
+    return bool(result.get("ok"))
 
 def process_report(report_file, test_type, execution_time, success, args=None):
     """
@@ -375,6 +424,46 @@ def show_test_cases():
             print(f"  * {name} (文件不存在: {path})")
             print("")
 
+
+def resolve_action(args) -> Tuple[Optional[str], Optional[str]]:
+    """
+    解析命令动作。
+
+    Returns:
+        (action, test_type)
+    """
+    if args.check:
+        return "check", None
+    if args.install_drivers:
+        return "install-drivers", None
+    if getattr(args, "ai_check", False):
+        return "ai-check", None
+    if args.cleanup:
+        return "cleanup", None
+    if args.list:
+        return "list", None
+    if args.run:
+        return "run", args.run
+
+    command = (args.command or "").strip().lower()
+    target = (args.target or "").strip().lower()
+
+    if not command:
+        return None, None
+
+    if command in SUPPORTED_TEST_TYPES:
+        return "run", command
+
+    if command in {"run", "test"}:
+        if target in SUPPORTED_TEST_TYPES:
+            return "run", target
+        return "invalid-run", None
+
+    if command in {"check", "ai-check", "list", "cleanup", "install-drivers", "help"}:
+        return command, None
+
+    return "unknown", None
+
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(
@@ -382,25 +471,29 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  %(prog)s --check                   # 检查环境和配置
-  %(prog)s --install-drivers         # 安装浏览器驱动
-  %(prog)s --run login               # 运行登录测试
-  %(prog)s --run all                 # 运行所有测试
-  %(prog)s --run smoke               # 运行冒烟测试
-  %(prog)s --run all --workers 4     # 使用4个worker并行运行测试
-  %(prog)s --list                    # 列出所有测试用例
+  %(prog)s check                     # 检查环境和配置
+  %(prog)s ai-check                  # 检查 AI 配置和接口
+  %(prog)s login                     # 运行登录测试
+  %(prog)s smoke -j 4                # 使用4个worker运行冒烟测试
+  %(prog)s run product --headless    # 无头运行商品测试
+  %(prog)s list                      # 列出所有测试用例
+  %(prog)s --run all                 # 兼容旧写法
         """
     )
 
+    parser.add_argument('command', nargs='?', help='简化命令：check/list/login/product/order/user/permission/smoke/regression/all')
+    parser.add_argument('target', nargs='?', help='当使用 run/test 时指定测试目标')
     parser.add_argument('--check', action='store_true',
                        help='检查项目环境和配置')
+    parser.add_argument('--ai-check', action='store_true',
+                       help='检查 AI 配置与接口连通性')
     parser.add_argument('--install-drivers', action='store_true',
                        help='安装浏览器驱动')
-    parser.add_argument('--run', choices=['all', 'login', 'product', 'order', 'user', 'permission', 'smoke', 'regression'],
+    parser.add_argument('--run', choices=SUPPORTED_TEST_TYPES,
                        help='运行指定类型的测试')
-    parser.add_argument('--workers', type=int, default=1,
+    parser.add_argument('-j', '--workers', type=int, default=1,
                        help='并行执行的工作进程数 (默认: 1)')
-    parser.add_argument('--headless', action='store_true',
+    parser.add_argument('-H', '--headless', action='store_true',
                        help='使用无头浏览器模式')
     parser.add_argument('--list', action='store_true',
                        help='列出所有可用的测试用例')
@@ -420,13 +513,35 @@ def main():
     # 打印横幅
     print_banner()
 
-    # 如果没有参数，显示帮助
-    if not any([args.check, args.install_drivers, args.run, args.list, args.cleanup]):
+    action, test_type = resolve_action(args)
+
+    # 如果没有参数，显示更友好的快速提示
+    if action is None:
+        print_quick_start()
         parser.print_help()
+        return 0
+
+    if action == "help":
+        print_quick_start()
+        parser.print_help()
+        return 0
+
+    if action == "unknown":
+        print(f"[ERROR] 不支持的命令: {args.command}")
+        print_quick_start()
+        return 1
+
+    if action == "invalid-run":
+        print("[ERROR] 请指定要运行的测试目标。")
+        print("可选值: " + ", ".join(SUPPORTED_TEST_TYPES))
+        print("")
+        print("例如:")
+        print("  python run.py run login")
+        print("  python run.py test smoke")
         return 1
 
     # 检查环境和配置
-    if args.check:
+    if action == "check":
         print("执行环境检查...")
         deps_ok = check_dependencies()
         config_ok = check_config()
@@ -438,21 +553,29 @@ def main():
             print("[ERROR] 环境或配置检查未通过")
             return 1
 
+    if action == "ai-check":
+        deps_ok = check_dependencies()
+        config_ok = check_config()
+        if not deps_ok or not config_ok:
+            print("[ERROR] 基础环境或配置检查未通过，无法继续检查 AI 服务。")
+            return 1
+        return 0 if check_ai_service() else 1
+
     # 安装浏览器驱动
-    if args.install_drivers:
+    if action == "install-drivers":
         return 0 if install_browser_drivers() else 1
 
     # 清理过期报告
-    if args.cleanup:
+    if action == "cleanup":
         return 0 if cleanup_reports() else 1
 
     # 列出测试用例
-    if args.list:
+    if action == "list":
         show_test_cases()
         return 0
 
     # 运行测试
-    if args.run:
+    if action == "run" and test_type:
         # 先检查环境和配置
         if not check_dependencies():
             print("[ERROR] 依赖检查失败，请先运行: python run.py --check")
@@ -464,7 +587,7 @@ def main():
             return 1
 
         # 运行测试
-        success = run_tests(args.run, args)
+        success = run_tests(test_type, args)
         return 0 if success else 1
 
     return 0

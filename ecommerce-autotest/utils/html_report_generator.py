@@ -10,6 +10,7 @@ import json
 import time
 import shutil
 import re
+import html
 from typing import Dict, List, Any, Optional, Union
 from datetime import datetime, timedelta
 from string import Template
@@ -263,12 +264,26 @@ class HTMLReportGenerator:
             test_result.setdefault("retry_count", 0)
             test_result.setdefault("error_message", "")
             test_result.setdefault("screenshot", "")
+            test_result.setdefault("ai_analysis", {})
 
             # 格式化持续时间
             if isinstance(test_result["duration"], (int, float)):
                 test_result["duration_str"] = f"{test_result['duration']:.2f}s"
             else:
                 test_result["duration_str"] = str(test_result["duration"])
+
+        ai_summary = report_data.get("ai_summary", {}) or {}
+        ai_summary.setdefault("summary", "本次未生成 AI 摘要。")
+        ai_summary.setdefault("risk_modules", [])
+        ai_summary.setdefault("recommendations", [])
+        ai_summary.setdefault("rerun_suggestion", "建议先检查失败用例后再决定是否回归。")
+
+        failed_tests = report_data.get("failed_tests", [])
+        if not failed_tests:
+            failed_tests = [
+                test for test in test_results
+                if str(test.get("status", "")).lower() in {"failed", "error"}
+            ]
 
         # 模块统计
         module_stats = report_data.get("module_stats", [])
@@ -286,10 +301,18 @@ class HTMLReportGenerator:
             "stats": stats_info,
             "module_stats": module_stats,
             "test_results": test_results,
+            "failed_tests": failed_tests,
+            "ai_summary": ai_summary,
             "historical_data": historical_data,
             "summary_type": report_data.get("summary_type", "default"),
             "generation_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
+
+        processed_data["module_stats_html"] = self._build_module_stats_html(module_stats)
+        processed_data["test_results_rows_html"] = self._build_test_results_rows_html(test_results)
+        processed_data["ai_recommendations_html"] = self._build_ai_recommendations_html(ai_summary)
+        processed_data["ai_failure_cards_html"] = self._build_ai_failure_cards_html(failed_tests)
+        processed_data["ai_risk_modules_text"] = "、".join(ai_summary.get("risk_modules", [])) or "无"
 
         return processed_data
 
@@ -364,10 +387,10 @@ class HTMLReportGenerator:
         """
         # 首先尝试使用_simple_template_render，它支持{{variable}}语法
         try:
+            before_placeholder_count = len(re.findall(r'\{\{[^}]+\}\}', template_content))
             result = self._simple_template_render(template_content, data)
-            # 检查是否还有未替换的变量
-            import re
-            if not re.search(r'\{\{[^}]+\}\}', result) and not re.search(r'\$\{[^}]+\}', result):
+            after_placeholder_count = len(re.findall(r'\{\{[^}]+\}\}', result))
+            if after_placeholder_count == 0 or after_placeholder_count < before_placeholder_count:
                 return result
         except Exception as e:
             self.logger.error(f"简单模板渲染失败: {e}")
@@ -381,6 +404,104 @@ class HTMLReportGenerator:
         except Exception as e:
             self.logger.error(f"模板渲染失败: {e}")
             return template_content  # 返回原始内容
+
+    def _build_module_stats_html(self, module_stats: List[Dict[str, Any]]) -> str:
+        """构建模块统计 HTML。"""
+        if not module_stats:
+            return '<div class="empty-state">暂无模块统计数据</div>'
+
+        cards = []
+        for module in module_stats:
+            pass_rate = float(module.get("pass_rate", 0) or 0)
+            state_class = "module-passed" if pass_rate >= 80 else "module-failed"
+            cards.append(
+                f'''
+                <div class="module-item {state_class}">
+                    <div class="module-name">{html.escape(str(module.get("name", "unknown")))}</div>
+                    <div class="module-progress">
+                        <div class="module-progress-bar" style="width: {pass_rate}%"></div>
+                    </div>
+                    <div class="module-info">
+                        <span>{module.get("passed", 0)}/{module.get("total", 0)} 通过</span>
+                        <span>{pass_rate:.2f}%</span>
+                    </div>
+                </div>
+                '''
+            )
+        return "".join(cards)
+
+    def _build_test_results_rows_html(self, test_results: List[Dict[str, Any]]) -> str:
+        """构建测试结果表格行 HTML。"""
+        if not test_results:
+            return '<tr><td colspan="9" class="empty-state">暂无测试结果</td></tr>'
+
+        rows = []
+        for index, test in enumerate(test_results, start=1):
+            status = str(test.get("status", "unknown")).lower()
+            error_message = str(test.get("error_message", "") or "")
+            screenshot = str(test.get("screenshot", "") or "")
+            ai_analysis = test.get("ai_analysis", {}) or {}
+            ai_summary = html.escape(str(ai_analysis.get("root_cause", "-"))) if ai_analysis else "-"
+
+            if screenshot:
+                screenshot_html = f'<a href="{html.escape(screenshot)}" target="_blank">查看</a>'
+            else:
+                screenshot_html = '-'
+
+            rows.append(
+                f'''
+                <tr>
+                    <td>{index}</td>
+                    <td>
+                        <div class="test-name">{html.escape(str(test.get("name", f"Test Case {index}")))}</div>
+                        <div class="test-module">{html.escape(str(test.get("module", "unknown")))}</div>
+                    </td>
+                    <td>{html.escape(str(test.get("module", "unknown")))}</td>
+                    <td><span class="status-badge status-{status}">{html.escape(status)}</span></td>
+                    <td class="duration">{html.escape(str(test.get("duration_str", test.get("duration", "-"))))}</td>
+                    <td>{html.escape(str(test.get("retry_count", 0)))}</td>
+                    <td class="error-details" title="{html.escape(error_message)}">{html.escape(error_message[:120] if error_message else "-")}</td>
+                    <td class="ai-cell" title="{ai_summary}">{ai_summary}</td>
+                    <td>{screenshot_html}</td>
+                </tr>
+                '''
+            )
+        return "".join(rows)
+
+    def _build_ai_recommendations_html(self, ai_summary: Dict[str, Any]) -> str:
+        """构建 AI 建议列表 HTML。"""
+        recommendations = ai_summary.get("recommendations", [])
+        if not recommendations:
+            return "<li>无</li>"
+        return "".join(f"<li>{html.escape(str(item))}</li>" for item in recommendations)
+
+    def _build_ai_failure_cards_html(self, failed_tests: List[Dict[str, Any]]) -> str:
+        """构建 AI 失败分析卡片 HTML。"""
+        if not failed_tests:
+            return '<div class="empty-state">本轮没有失败用例。</div>'
+
+        cards = []
+        for test in failed_tests:
+            analysis = test.get("ai_analysis", {}) or {}
+            cards.append(
+                f'''
+                <article class="ai-failure-card">
+                    <div class="ai-failure-head">
+                        <h3>{html.escape(str(test.get("name", "unknown")))} </h3>
+                        <span class="severity-badge severity-{html.escape(str(analysis.get("severity", "medium")).lower())}">
+                            {html.escape(str(analysis.get("severity", "medium")).upper())}
+                        </span>
+                    </div>
+                    <p class="ai-meta">模块：{html.escape(str(test.get("module", "unknown")))} | 状态：{html.escape(str(test.get("status", "")))}</p>
+                    <p><strong>原始错误：</strong>{html.escape(str(test.get("error_message", "") or "无"))}</p>
+                    <p><strong>失败原因：</strong>{html.escape(str(analysis.get("root_cause", "无法确定")))}</p>
+                    <p><strong>疑似位置：</strong>{html.escape(str(analysis.get("location", "无法确定")))}</p>
+                    <p><strong>修复建议：</strong>{html.escape(str(analysis.get("fix_suggestion", "请结合原始日志排查")))}</p>
+                    <p><strong>置信度：</strong>{html.escape(str(analysis.get("confidence", 0.0)))}</p>
+                </article>
+                '''
+            )
+        return "".join(cards)
 
     def _simple_template_render(self, template_content: str, data: Dict[str, Any]) -> str:
         """

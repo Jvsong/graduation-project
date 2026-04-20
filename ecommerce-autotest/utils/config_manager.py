@@ -60,6 +60,8 @@ class ConfigManager:
             with open(self._config_path, 'r', encoding='utf-8') as f:
                 self._config = yaml.safe_load(f)
 
+            self._resolve_env_placeholders(self._config)
+
             # 验证必要配置项
             self._validate_config()
 
@@ -235,6 +237,26 @@ class ConfigManager:
             if self.get(item) is None:
                 raise ValueError(f"配置文件缺少必要配置项: {item}")
 
+    def _resolve_env_placeholders(self, value: Any) -> Any:
+        """
+        递归解析 ${ENV_NAME} 形式的环境变量占位符。
+        """
+        if isinstance(value, dict):
+            for key, item in value.items():
+                value[key] = self._resolve_env_placeholders(item)
+            return value
+
+        if isinstance(value, list):
+            for index, item in enumerate(value):
+                value[index] = self._resolve_env_placeholders(item)
+            return value
+
+        if isinstance(value, str):
+            if value.startswith("${") and value.endswith("}"):
+                env_name = value[2:-1].strip()
+                return os.getenv(env_name, "")
+        return value
+
     def _set_default_config(self) -> None:
         """设置默认配置"""
         self._config = {
@@ -270,6 +292,19 @@ class ConfigManager:
                     'sender': 'test@example.com',
                     'receivers': ['admin@example.com']
                 }
+            },
+            'ai': {
+                'enabled': False,
+                'provider': 'openai',
+                'api_base': 'https://api.openai.com/v1',
+                'api_key': '',
+                'model': 'gpt-4.1-mini',
+                'timeout': 45,
+                'temperature': 0.2,
+                'analyze_failures': True,
+                'generate_summary': True,
+                'max_input_chars': 6000,
+                'summary_max_items': 5
             },
             'logging': {
                 'level': 'INFO',

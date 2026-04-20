@@ -13,3 +13,11 @@
 - [测试说明](docs/测试说明.md)
 - [项目进度续接摘要](docs/notes/项目进度续接摘要.md)
 - [测试执行脚本](ecommerce-autotest/run.py)
+
+常用命令：
+
+- `python ecommerce-autotest/run.py check`
+- `python ecommerce-autotest/run.py list`
+- `python ecommerce-autotest/run.py login`
+- `python ecommerce-autotest/run.py smoke -j 4`
+- `python ecommerce-autotest/run.py all`
