@@ -24,6 +24,7 @@ class AIAnalysisService:
         "fix_suggestion": "请结合原始错误堆栈、截图和页面操作日志进一步排查。",
         "severity": "medium",
         "confidence": 0.0,
+        "category": "other",
     }
 
     DEFAULT_SUMMARY = {
@@ -31,6 +32,13 @@ class AIAnalysisService:
         "risk_modules": [],
         "recommendations": [],
         "rerun_suggestion": "建议先检查失败用例后再决定是否回归。",
+        "stability_trend": "unknown",
+        "root_cause_summary": [],
+        "confidence_score": 0.0,
+        "trend_analysis": "",
+        "key_findings": [],
+        "improvement_areas": [],
+        "execution_quality": "unknown",
     }
 
     def __init__(self, config: Any):
@@ -48,6 +56,10 @@ class AIAnalysisService:
         self.max_input_chars = int(config.get("ai.max_input_chars", 6000) or 6000)
         self.temperature = float(config.get("ai.temperature", 0.2) or 0.2)
         self.extra_headers = config.get("ai.extra_headers", {}) or {}
+        # 重试配置
+        self.max_retries = int(config.get("ai.max_retries", 2) or 2)
+        self.retry_delay = float(config.get("ai.retry_delay", 1.0) or 1.0)
+        self.retry_on_status_codes = [429, 500, 502, 503, 504]  # 可重试的状态码
 
     def is_available(self) -> bool:
         """判断 AI 服务是否可用。"""
@@ -133,6 +145,7 @@ class AIAnalysisService:
             "fix_suggestion": parsed.get("fix_suggestion", self.DEFAULT_FAILURE_ANALYSIS["fix_suggestion"]),
             "severity": str(parsed.get("severity", "medium")).lower(),
             "confidence": self._normalize_confidence(parsed.get("confidence")),
+            "category": parsed.get("category", self.DEFAULT_FAILURE_ANALYSIS["category"]),
             "source": "ai",
             "raw_response": content,
             "service_error": "",
@@ -159,12 +172,21 @@ class AIAnalysisService:
 
         risk_modules = parsed.get("risk_modules", [])
         recommendations = parsed.get("recommendations", [])
+        key_findings = parsed.get("key_findings", [])
+        improvement_areas = parsed.get("improvement_areas", [])
 
         return {
             "summary": parsed.get("summary", self.DEFAULT_SUMMARY["summary"]),
             "risk_modules": risk_modules if isinstance(risk_modules, list) else [],
             "recommendations": recommendations if isinstance(recommendations, list) else [],
             "rerun_suggestion": parsed.get("rerun_suggestion", self.DEFAULT_SUMMARY["rerun_suggestion"]),
+            "stability_trend": parsed.get("stability_trend", self.DEFAULT_SUMMARY["stability_trend"]),
+            "root_cause_summary": parsed.get("root_cause_summary", self.DEFAULT_SUMMARY["root_cause_summary"]),
+            "confidence_score": self._normalize_confidence(parsed.get("confidence_score", 0.0)),
+            "trend_analysis": parsed.get("trend_analysis", self.DEFAULT_SUMMARY["trend_analysis"]),
+            "key_findings": key_findings if isinstance(key_findings, list) else [],
+            "improvement_areas": improvement_areas if isinstance(improvement_areas, list) else [],
+            "execution_quality": parsed.get("execution_quality", self.DEFAULT_SUMMARY["execution_quality"]),
             "source": "ai",
             "raw_response": content,
             "service_error": "",
@@ -178,61 +200,112 @@ class AIAnalysisService:
         return str(config.get("ai.api_key", "") or "").strip()
 
     def _call_model(self, prompt: str) -> str:
-        """调用大模型接口。"""
-        try:
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            }
-            for key, value in self.extra_headers.items():
-                headers[str(key)] = str(value)
+        """调用大模型接口，支持重试机制。"""
+        import time
 
-            response = requests.post(
-                f"{self.api_base}{self.chat_endpoint}",
-                headers=headers,
-                json={
-                    "model": self.model,
-                    "temperature": self.temperature,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": (
-                                "你是一名自动化测试分析助手。"
-                                "你只能基于提供的信息给出辅助判断，"
-                                "不能编造不存在的结论，必须输出 JSON。"
-                            ),
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        for key, value in self.extra_headers.items():
+            headers[str(key)] = str(value)
+
+        request_data = {
+            "model": self.model,
+            "temperature": self.temperature,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "你是一名自动化测试分析助手。"
+                        "你只能基于提供的信息给出辅助判断，"
+                        "不能编造不存在的结论，必须输出 JSON。"
+                    ),
                 },
-                timeout=self.timeout,
-            )
+                {"role": "user", "content": prompt},
+            ],
+        }
 
-            if response.status_code >= 400:
-                body_preview = response.text[:500]
-                return json.dumps(
-                    {
-                        "error": self._format_http_error(response.status_code, body_preview),
-                        "status_code": response.status_code,
-                        "response_body": body_preview,
-                    },
-                    ensure_ascii=False,
+        last_exception = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = requests.post(
+                    f"{self.api_base}{self.chat_endpoint}",
+                    headers=headers,
+                    json=request_data,
+                    timeout=self.timeout,
                 )
 
-            payload = response.json()
-            return (
-                payload.get("choices", [{}])[0]
-                .get("message", {})
-                .get("content", "")
-                .strip()
-            )
-        except Exception as exc:
-            return json.dumps(
-                {
-                    "error": f"AI 调用失败: {exc}",
-                },
-                ensure_ascii=False,
-            )
+                if response.status_code < 400:
+                    payload = response.json()
+                    content = (
+                        payload.get("choices", [{}])[0]
+                        .get("message", {})
+                        .get("content", "")
+                        .strip()
+                    )
+                    return content
+
+                # 处理错误响应
+                body_preview = response.text[:500]
+                error_info = {
+                    "error": self._format_http_error(response.status_code, body_preview),
+                    "status_code": response.status_code,
+                    "response_body": body_preview,
+                    "attempt": attempt,
+                    "max_retries": self.max_retries,
+                }
+
+                # 检查是否应该重试
+                should_retry = (
+                    attempt < self.max_retries and
+                    response.status_code in self.retry_on_status_codes
+                )
+
+                if should_retry:
+                    wait_time = self.retry_delay * (2 ** attempt)  # 指数退避
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    return json.dumps(error_info, ensure_ascii=False)
+
+            except requests.exceptions.Timeout as e:
+                last_exception = e
+                error_type = "timeout"
+                error_msg = f"AI 调用超时: {e}"
+            except requests.exceptions.ConnectionError as e:
+                last_exception = e
+                error_type = "connection"
+                error_msg = f"AI 连接失败: {e}"
+            except requests.exceptions.RequestException as e:
+                last_exception = e
+                error_type = "request"
+                error_msg = f"AI 请求异常: {e}"
+            except Exception as e:
+                last_exception = e
+                error_type = "unknown"
+                error_msg = f"AI 调用失败: {e}"
+
+            # 决定是否重试
+            if attempt < self.max_retries and error_type in ["timeout", "connection"]:
+                wait_time = self.retry_delay * (2 ** attempt)
+                time.sleep(wait_time)
+                continue
+            else:
+                error_info = {
+                    "error": error_msg,
+                    "error_type": error_type,
+                    "attempt": attempt,
+                    "max_retries": self.max_retries,
+                    "exception": str(last_exception) if last_exception else "",
+                }
+                return json.dumps(error_info, ensure_ascii=False)
+
+        # 不应该到达这里，但为了安全返回
+        return json.dumps(
+            {"error": "AI 调用失败: 未知错误", "error_type": "unknown"},
+            ensure_ascii=False,
+        )
 
     def _format_http_error(self, status_code: int, response_text: str) -> str:
         """格式化 HTTP 错误信息。"""
@@ -265,11 +338,16 @@ class AIAnalysisService:
         }
         body = json.dumps(sanitized_result, ensure_ascii=False, indent=2)
         return (
-            "请分析下面这个自动化测试失败用例，并返回 JSON。\n"
-            "输出字段必须包含: root_cause, location, fix_suggestion, severity, confidence。\n"
-            "severity 仅允许: low, medium, high。\n"
-            "confidence 为 0 到 1 之间的小数。\n"
-            "如果信息不足，请明确写“无法确定”。\n"
+            "你是一个自动化测试分析专家，请分析下面的测试失败用例，提供详细且可操作的诊断。\n"
+            "请返回 JSON 格式，包含以下字段：\n"
+            "1. root_cause: 失败的根本原因（尽可能具体，如：元素定位器失效、断言值不匹配、页面加载超时、网络错误等）\n"
+            "2. location: 代码位置（从堆栈中提取文件名和行号，如：login_page.py:42）\n"
+            "3. fix_suggestion: 具体的修复建议（包括代码修改示例、配置调整或测试步骤优化）\n"
+            "4. severity: 严重程度（仅允许：low, medium, high）\n"
+            "5. confidence: 置信度（0到1之间的小数，基于可用信息的完整性）\n"
+            "6. category: 问题分类（可选：locator, assertion, timeout, network, authentication, data, environment, other）\n"
+            "如果信息不足无法确定，请将 root_cause 设为“无法确定”，confidence 设为 0。\n"
+            "请基于错误信息和堆栈跟踪提供专业分析。\n"
             f"失败用例信息:\n{body}"
         )
 
@@ -292,10 +370,20 @@ class AIAnalysisService:
         }
         body = json.dumps(summary_payload, ensure_ascii=False, indent=2)
         return (
-            "请基于以下自动化测试报告数据，生成结构化 JSON 摘要。\n"
-            "输出字段必须包含: summary, risk_modules, recommendations, rerun_suggestion。\n"
-            "risk_modules 和 recommendations 必须是数组。\n"
-            "summary 要简洁，适合放在 HTML 报告顶部。\n"
+            "你是一个测试报告分析专家，请基于以下自动化测试报告数据，生成专业、结构化的 JSON 摘要。\n"
+            "输出字段必须包含：\n"
+            "1. summary: 总体结论，突出通过率、主要问题和稳定性评估\n"
+            "2. risk_modules: 高风险模块数组，每个元素包含模块名称、风险等级（high/medium/low）、失败原因和修复优先级\n"
+            "3. recommendations: 具体建议数组，每条建议应可操作、有针对性\n"
+            "4. rerun_suggestion: 回归测试建议（是否立即回归、回归范围、重点关注模块）\n"
+            "5. stability_trend: 稳定性趋势评估（improving, stable, declining, unknown）\n"
+            "6. root_cause_summary: 失败根本原因分类统计（如：定位问题、断言问题、超时问题等）\n"
+            "7. confidence_score: 分析结果的置信度评分（0-1之间的浮点数）\n"
+            "8. trend_analysis: 趋势分析（如果有历史数据，提供与历史执行的对比分析）\n"
+            "9. key_findings: 关键发现摘要数组，突出最重要的发现\n"
+            "10. improvement_areas: 需要改进的领域数组（如：测试稳定性、执行效率、覆盖率等）\n"
+            "11. execution_quality: 执行质量评估（excellent, good, acceptable, poor, unknown）\n"
+            "请提供详细、实用的分析，帮助团队快速定位问题和改进测试质量。\n"
             f"报告数据:\n{body}"
         )
 
@@ -350,6 +438,20 @@ class AIAnalysisService:
             analysis["fix_suggestion"] = "检查 ai.api_base 与 ai.api_key 是否匹配当前服务商，确认该密钥对当前模型和端点有访问权限。"
             analysis["severity"] = "high"
             analysis["confidence"] = 0.98
+
+        # 设置分类
+        if "NoSuchElementException" in combined or "NoSuchElement" in combined:
+            analysis["category"] = "locator"
+        elif "TimeoutException" in combined or "超时" in combined or "timed out" in combined.lower():
+            analysis["category"] = "timeout"
+        elif "AssertionError" in combined:
+            analysis["category"] = "assertion"
+        elif "401 Client Error" in combined or "Unauthorized" in combined:
+            analysis["category"] = "authentication"
+        elif "ElementClickInterceptedException" in combined or "not interactable" in combined.lower():
+            analysis["category"] = "interaction"
+        else:
+            analysis["category"] = "other"
 
         return analysis
 
@@ -408,11 +510,58 @@ class AIAnalysisService:
             summary = f"本轮测试共执行 {total} 条，用例全部通过，通过率 {pass_rate:.1f}%。"
             rerun_suggestion = "当前结果稳定，可在下一次代码变更后继续执行冒烟验证。"
 
+        # 生成根本原因摘要
+        root_cause_summary = []
+        for issue_type, count in issue_counter.items():
+            if issue_type == "locator_issue":
+                root_cause_summary.append({"category": "元素定位", "count": count})
+            elif issue_type == "timeout_issue":
+                root_cause_summary.append({"category": "超时", "count": count})
+            elif issue_type == "assertion_mismatch":
+                root_cause_summary.append({"category": "断言不匹配", "count": count})
+            else:
+                root_cause_summary.append({"category": issue_type, "count": count})
+
+        # 评估执行质量
+        if pass_rate >= 95:
+            execution_quality = "excellent"
+        elif pass_rate >= 85:
+            execution_quality = "good"
+        elif pass_rate >= 70:
+            execution_quality = "acceptable"
+        else:
+            execution_quality = "poor"
+
+        # 关键发现
+        key_findings = []
+        if failed > 0:
+            key_findings.append(f"发现 {failed} 个失败用例需要优先处理")
+        if errors > 0:
+            key_findings.append(f"发现 {errors} 个错误用例需要排查")
+        if not failed and not errors:
+            key_findings.append("所有用例执行成功，测试质量良好")
+
+        # 改进领域
+        improvement_areas = []
+        if pass_rate < 90:
+            improvement_areas.append("测试用例稳定性")
+        if issue_counter:
+            improvement_areas.append("失败用例分析效率")
+        if len(risk_modules) > 0:
+            improvement_areas.append(f"高风险模块({', '.join(risk_modules)})的测试覆盖")
+
         return {
             "summary": summary,
             "risk_modules": risk_modules,
             "recommendations": recommendations[:5],
             "rerun_suggestion": rerun_suggestion,
+            "stability_trend": "unknown",
+            "root_cause_summary": root_cause_summary,
+            "confidence_score": 0.5,  # 本地分析的置信度较低
+            "trend_analysis": "无历史数据对比",
+            "key_findings": key_findings,
+            "improvement_areas": improvement_areas,
+            "execution_quality": execution_quality,
         }
 
     def _classify_issue_type(self, error_message: str, traceback: str) -> str:

@@ -605,11 +605,27 @@
                     <div class="ai-summary-label">回归建议</div>
                     <div class="ai-summary-value">{{ai_summary_rerun_suggestion}}</div>
                 </div>
+                <div class="ai-summary-card">
+                    <div class="ai-summary-label">执行质量</div>
+                    <div class="ai-summary-value">{{ai_execution_quality}}</div>
+                </div>
+                <div class="ai-summary-card">
+                    <div class="ai-summary-label">置信度</div>
+                    <div class="ai-summary-value">{{ai_confidence_score}}</div>
+                </div>
             </div>
             <div class="ai-summary-label">建议处理项</div>
             <ul class="ai-list">
                 {{ai_recommendations_html}}
             </ul>
+            <div class="ai-summary-label">关键发现</div>
+            {{ai_key_findings_html}}
+            <div class="ai-summary-label">改进领域</div>
+            {{ai_improvement_areas_html}}
+            <div class="ai-summary-label">失败原因分类</div>
+            {{ai_root_cause_summary_html}}
+            <div class="ai-summary-label">趋势分析</div>
+            <p class="ai-summary-text">{{ai_trend_analysis}}</p>
         </section>
 
         <!-- 执行信息 -->

@@ -1,0 +1,217 @@
+# Dashboard / AI 智能问讯基线测试数据
+
+baseline:
+  project: "shop-system"
+  source_profile: "dev"
+  source_initializer: "backend/src/main/java/com/shop/config/DevDataInitializer.java"
+  description: "基于 shop-system dev 环境默认演示数据建立的 Dashboard 基线"
+
+account:
+  primary:
+    username: "admin"
+    password: "admin123"
+    role: "ROLE_ADMIN"
+    reason: "管理员拥有完整订单与商品视图，最适合作为 Dashboard 和 AI 问讯基线账号"
+
+time_range:
+  ui_default: "7d"
+  strong_assertion: "30d"
+  supported_ranges: ["7d", "15d", "30d"]
+  rationale:
+    - "7d 与前端 Dashboard 默认时间范围一致，适合做 UI 默认值校验"
+    - "30d 是内置最大范围，适合做强断言，降低因数据库初始化时间偏移导致的空数据风险"
+    - "若 dev 数据库初始化时间已超过 30 天，应先重置数据库或重新写入演示数据，再执行强断言用例"
+
+assertion_policy:
+  metrics: "strong"
+  structure: "strong"
+  action_target: "strong"
+  ai_text: "weak"
+  today_cards: "weak"
+  notes:
+    - "强断言字段包括 questionType、日期范围、metrics 数值、suggestions 数量、跳转路径"
+    - "弱断言字段包括 AI 生成摘要和建议详情，仅校验非空、关键词或业务语义"
+    - "today-statistics 依赖订单实际创建日期，不建议做固定数值断言，除非数据库是当天刚初始化"
+
+seed_snapshot:
+  users:
+    - "admin / admin123 / ROLE_ADMIN"
+    - "merchant1 / admin123 / ROLE_MERCHANT"
+    - "operator1 / admin123 / ROLE_OPERATOR"
+    - "service1 / admin123 / ROLE_CUSTOMER_SERVICE"
+    - "customer1 / admin123 / ROLE_USER"
+    - "customer2 / admin123 / ROLE_USER"
+  products:
+    - name: "Demo Phone X"
+      price: 3999.00
+      stock: 200
+    - name: "Demo Laptop Pro"
+      price: 6999.00
+      stock: 80
+  orders:
+    - orderNo: "ORDER-20240404"
+      status: 1
+      actualAmount: 3999.00
+      product: "Demo Phone X"
+    - orderNo: "ORDER-20240405"
+      status: 2
+      actualAmount: 6999.00
+      product: "Demo Laptop Pro"
+    - orderNo: "ORDER-20240406"
+      status: 3
+      actualAmount: 3999.00
+      product: "Demo Phone X"
+    - orderNo: "ORDER-20240407"
+      status: 4
+      actualAmount: 6999.00
+      product: "Demo Laptop Pro"
+
+expected_statistics:
+  order_statistics:
+    totalOrders: 4
+    totalSales: 21996.00
+    averageOrderValue: 5499.00
+    pendingPaymentCount: 1
+    pendingShipmentCount: 1
+    shippedCount: 1
+    completedCount: 1
+    cancelledCount: 0
+    paymentMethodDistribution:
+      "1": 3
+  top_products:
+    - productName: "Demo Laptop Pro"
+      salesQuantity: 1
+      salesAmount: 6999.00
+  restock_analysis_7d:
+    analysisDays: 7
+    highRiskCount: 0
+    mediumRiskCount: 0
+    lowRiskCount: 1
+    suggestions:
+      - productName: "Demo Laptop Pro"
+        currentStock: 80
+        salesQuantity: 1
+        riskLevel: "LOW"
+        suggestedRestockQuantity: 0
+  restock_analysis_15d:
+    analysisDays: 15
+    highRiskCount: 0
+    mediumRiskCount: 0
+    lowRiskCount: 1
+  restock_analysis_30d:
+    analysisDays: 30
+    highRiskCount: 0
+    mediumRiskCount: 0
+    lowRiskCount: 1
+
+question_type_baseline:
+  DAILY_SUMMARY:
+    strong_assertions:
+      questionType: "DAILY_SUMMARY"
+      metrics:
+        totalOrders: 4
+        totalSales: 21996.00
+        completedCount: 1
+        highRiskRestockCount: 0
+        mediumRiskRestockCount: 0
+      suggestions_count: 2
+      suggestion_titles:
+        - "热销机会：Demo Laptop Pro"
+        - "补货提醒：Demo Laptop Pro"
+      action_targets:
+        - "/admin/products"
+    stable_summary_contains:
+      - "统计周期内共 4 单"
+      - "销售额 21996.00"
+      - "热销商品为 Demo Laptop Pro"
+      - "当前库存风险整体可控"
+
+  HOT_PRODUCTS:
+    strong_assertions:
+      questionType: "HOT_PRODUCTS"
+      metrics:
+        totalOrders: 4
+        totalSales: 21996.00
+        topProductCount: 1
+      suggestions_count: 1
+      suggestion_titles:
+        - "热销商品推荐：Demo Laptop Pro"
+      action_targets:
+        - "/admin/products"
+      evidence_contains:
+        - "销量：1"
+        - "销售额：6999.00"
+    weak_assertions:
+      - "summary 非空"
+      - "detail 非空"
+    fallback_assertions:
+      summary: "当前最热销的商品是 Demo Laptop Pro，累计售出 1 件，建议优先保障库存并增加推荐曝光。"
+      first_detail: "Demo Laptop Pro 在统计周期内售出 1 件，销售额 6999.00，建议优先关注库存并提高曝光。"
+
+  RESTOCK_SUGGESTION:
+    strong_assertions:
+      questionType: "RESTOCK_SUGGESTION"
+      metrics_by_range:
+        "7d":
+          analysisDays: 7
+          highRiskCount: 0
+          mediumRiskCount: 0
+          lowRiskCount: 1
+        "15d":
+          analysisDays: 15
+          highRiskCount: 0
+          mediumRiskCount: 0
+          lowRiskCount: 1
+        "30d":
+          analysisDays: 30
+          highRiskCount: 0
+          mediumRiskCount: 0
+          lowRiskCount: 1
+      suggestions_count: 1
+      suggestion_titles:
+        - "库存整体稳定"
+      action_targets:
+        - "/admin/products"
+      evidence_contains:
+        - "低风险商品：1"
+        - "参考商品：Demo Laptop Pro"
+    weak_assertions:
+      - "summary 非空"
+      - "detail 非空"
+    fallback_assertions:
+      summary: "当前库存风险整体稳定，暂无急需补货的商品。"
+      first_detail: "当前商品库存可支撑近期销售，暂无高优先级补货项。"
+
+  ORDER_ALERT:
+    strong_assertions:
+      questionType: "ORDER_ALERT"
+      metrics:
+        totalOrders: 4
+        pendingPaymentCount: 1
+        pendingShipmentCount: 1
+        cancelledCount: 0
+        cancelledRate: 0
+      suggestions_count: 1
+      suggestion_titles:
+        - "订单状态整体稳定"
+      action_targets:
+        - "/admin/orders"
+    stable_summary_contains:
+      - "当前订单结构整体平稳"
+      - "未发现明显异常"
+
+ui_baseline:
+  dashboard_url: "/admin/dashboard"
+  summary_section_title: "今日运营摘要"
+  signal_section_title: "重点建议"
+  assistant_drawer_title: "智能问讯窗口"
+  quick_questions:
+    - "今日运营建议"
+    - "热销商品"
+    - "补货建议"
+    - "异常提醒"
+
+notes:
+  - "该基线建立在 dev profile 默认演示数据未被人工修改的前提下"
+  - "如数据库中新增了更多订单或商品，metrics 强断言会失效，需要先重置数据库"
+  - "当前代码中的 AI 开关文档已提到 AI_ENABLED，但 application.yml 尚未显式绑定 ai.enabled 配置项，不建议依赖环境变量直接关闭 AI 文案生成"

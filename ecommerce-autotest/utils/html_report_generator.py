@@ -277,6 +277,13 @@ class HTMLReportGenerator:
         ai_summary.setdefault("risk_modules", [])
         ai_summary.setdefault("recommendations", [])
         ai_summary.setdefault("rerun_suggestion", "建议先检查失败用例后再决定是否回归。")
+        ai_summary.setdefault("stability_trend", "unknown")
+        ai_summary.setdefault("root_cause_summary", [])
+        ai_summary.setdefault("confidence_score", 0.0)
+        ai_summary.setdefault("trend_analysis", "")
+        ai_summary.setdefault("key_findings", [])
+        ai_summary.setdefault("improvement_areas", [])
+        ai_summary.setdefault("execution_quality", "unknown")
 
         failed_tests = report_data.get("failed_tests", [])
         if not failed_tests:
@@ -313,6 +320,40 @@ class HTMLReportGenerator:
         processed_data["ai_recommendations_html"] = self._build_ai_recommendations_html(ai_summary)
         processed_data["ai_failure_cards_html"] = self._build_ai_failure_cards_html(failed_tests)
         processed_data["ai_risk_modules_text"] = "、".join(ai_summary.get("risk_modules", [])) or "无"
+        processed_data["ai_stability_trend"] = ai_summary.get("stability_trend", "unknown")
+        # 新字段处理
+        processed_data["ai_confidence_score"] = f"{float(ai_summary.get('confidence_score', 0.0)):.1%}"
+        processed_data["ai_trend_analysis"] = ai_summary.get("trend_analysis", "无趋势分析数据")
+        processed_data["ai_execution_quality"] = ai_summary.get("execution_quality", "unknown")
+        # 关键发现HTML
+        key_findings = ai_summary.get("key_findings", [])
+        if key_findings:
+            html_items = []
+            for item in key_findings:
+                html_items.append(f"<li>{html.escape(str(item))}</li>")
+            processed_data["ai_key_findings_html"] = "<ul>" + "".join(html_items) + "</ul>"
+        else:
+            processed_data["ai_key_findings_html"] = "<p>无关键发现</p>"
+        # 改进领域HTML
+        improvement_areas = ai_summary.get("improvement_areas", [])
+        if improvement_areas:
+            html_items = []
+            for item in improvement_areas:
+                html_items.append(f"<li>{html.escape(str(item))}</li>")
+            processed_data["ai_improvement_areas_html"] = "<ul>" + "".join(html_items) + "</ul>"
+        else:
+            processed_data["ai_improvement_areas_html"] = "<p>无明确改进领域</p>"
+        # 构建根本原因摘要HTML
+        root_cause_summary = ai_summary.get("root_cause_summary", [])
+        if root_cause_summary:
+            html_items = []
+            for item in root_cause_summary:
+                category = item.get("category", "未知")
+                count = item.get("count", 0)
+                html_items.append(f"<li>{category}: {count} 个</li>")
+            processed_data["ai_root_cause_summary_html"] = "<ul>" + "".join(html_items) + "</ul>"
+        else:
+            processed_data["ai_root_cause_summary_html"] = "<p>无分类数据</p>"
 
         return processed_data
 
@@ -441,7 +482,12 @@ class HTMLReportGenerator:
             error_message = str(test.get("error_message", "") or "")
             screenshot = str(test.get("screenshot", "") or "")
             ai_analysis = test.get("ai_analysis", {}) or {}
-            ai_summary = html.escape(str(ai_analysis.get("root_cause", "-"))) if ai_analysis else "-"
+            root_cause = str(ai_analysis.get("root_cause", "-"))
+            severity = str(ai_analysis.get("severity", "-")).upper()
+            category = str(ai_analysis.get("category", "-"))
+            confidence = str(ai_analysis.get("confidence", "-"))
+            ai_summary = html.escape(root_cause) if ai_analysis else "-"
+            ai_tooltip = f"严重程度: {severity}\n分类: {category}\n置信度: {confidence}\n原因: {root_cause}"
 
             if screenshot:
                 screenshot_html = f'<a href="{html.escape(screenshot)}" target="_blank">查看</a>'
@@ -461,7 +507,7 @@ class HTMLReportGenerator:
                     <td class="duration">{html.escape(str(test.get("duration_str", test.get("duration", "-"))))}</td>
                     <td>{html.escape(str(test.get("retry_count", 0)))}</td>
                     <td class="error-details" title="{html.escape(error_message)}">{html.escape(error_message[:120] if error_message else "-")}</td>
-                    <td class="ai-cell" title="{ai_summary}">{ai_summary}</td>
+                    <td class="ai-cell" title="{ai_tooltip}">{ai_summary}</td>
                     <td>{screenshot_html}</td>
                 </tr>
                 '''
@@ -495,9 +541,11 @@ class HTMLReportGenerator:
                     <p class="ai-meta">模块：{html.escape(str(test.get("module", "unknown")))} | 状态：{html.escape(str(test.get("status", "")))}</p>
                     <p><strong>原始错误：</strong>{html.escape(str(test.get("error_message", "") or "无"))}</p>
                     <p><strong>失败原因：</strong>{html.escape(str(analysis.get("root_cause", "无法确定")))}</p>
+                    <p><strong>问题分类：</strong>{html.escape(str(analysis.get("category", "其他")))}</p>
                     <p><strong>疑似位置：</strong>{html.escape(str(analysis.get("location", "无法确定")))}</p>
                     <p><strong>修复建议：</strong>{html.escape(str(analysis.get("fix_suggestion", "请结合原始日志排查")))}</p>
                     <p><strong>置信度：</strong>{html.escape(str(analysis.get("confidence", 0.0)))}</p>
+                    <p><strong>分析来源：</strong>{html.escape(str(analysis.get("source", "未知")))}</p>
                 </article>
                 '''
             )

@@ -46,7 +46,7 @@ ai:
   enabled: true
   provider: "openai"
   api_base: "https://api.openai.com/v1"
-  api_key: "sk-2f143c182ab6464b9af7c787f0fdef75"
+  api_key: "sk-c4a9723e43064b768c696d62d0ac8639"
   model: "gpt-4.1-mini"
   chat_endpoint: "/chat/completions"
   timeout: 45
@@ -56,6 +56,8 @@ ai:
   max_input_chars: 6000
   summary_max_items: 5
   extra_headers: {}
+  max_retries: 2
+  retry_delay: 1.0
 
 logging:
   level: "INFO"
